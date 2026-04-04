@@ -135,7 +135,7 @@ Verificacion:
 
 ### Etapa 4: Crear almacenamiento SQLite minimo
 
-[ ] Crear `~/.claude-ping-pong/db.sqlite` al arrancar. Crear las tres tablas del schema (`files`, `threads`, `messages`).
+[X] Crear `~/.claude-ping-pong/db.sqlite` al arrancar. Crear las tres tablas del schema (`files`, `threads`, `messages`).
 
 Verificacion:
 - Arrancar con DB vacia.
@@ -148,7 +148,7 @@ Verificacion:
 
 ### Etapa 5: Implementar `claude-ping-pong open`
 
-[ ] El comando hace un health check a `localhost:PORT/health`. Si no responde, arranca el servidor como proceso background (PID a `~/.claude-ping-pong/server.pid`), espera a que levante, y procede.
+[X] El comando hace un health check a `localhost:PORT/health`. Si no responde, arranca el servidor como proceso background (PID a `~/.claude-ping-pong/server.pid`), espera a que levante, y procede.
 
 Luego registra el archivo en `files` con un nanoid como ID y devuelve:
 ```json

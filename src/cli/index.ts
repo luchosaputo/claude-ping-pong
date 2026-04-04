@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 
-const [, , command, ...args] = process.argv
+import { defineCommand, runMain } from 'citty'
 
-if (!command) {
-  console.error('Usage: claude-ping-pong <command> [args]')
-  console.error('Commands: open, comments, reply, resolve')
-  process.exit(1)
-}
+const main = defineCommand({
+  meta: { name: 'claude-ping-pong', description: 'Local Markdown review tool for Claude agents' },
+  subCommands: {
+    open: () => import('./commands/open.js').then((m) => m.default),
+  },
+})
 
-console.log(`Command: ${command}`, args)
+runMain(main)
