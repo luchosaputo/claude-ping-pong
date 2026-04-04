@@ -103,7 +103,7 @@ claude-ping-pong resolve <thread-id>       # cierra un hilo
 
 ### Etapa 1: Crear el proyecto base
 
-[ ] Inicializar proyecto con `pnpm` y `git`. Estructura:
+[X] Inicializar proyecto con `pnpm` y `git`. Estructura:
 ```
 src/server/   src/client/   src/cli/
 dist/server/  dist/client/  dist/cli.js
@@ -117,7 +117,7 @@ Verificacion:
 
 ### Etapa 2: Levantar una pagina minima
 
-[ ] Agregar una ruta raiz en Hono que sirva el `index.html` de Vite.
+[X] Agregar una ruta raiz en Hono que sirva el `index.html` de Vite.
 
 Verificacion:
 - Abrir la URL local en el navegador.
@@ -126,7 +126,7 @@ Verificacion:
 
 ### Etapa 3: Definir configuracion local y puertos
 
-[ ] Puerto configurable via `CLAUDE_REVIEW_PORT` con default fijo. Directorio de datos `~/.claude-ping-pong/`.
+[X] Puerto configurable via `CLAUDE_REVIEW_PORT` con default fijo. Directorio de datos `~/.claude-ping-pong/`.
 
 Verificacion:
 - Arrancar con valores por defecto.
