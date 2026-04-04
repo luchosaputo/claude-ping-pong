@@ -162,7 +162,7 @@ Verificacion:
 
 ### Etapa 6: Servir el contenido de un archivo registrado
 
-[ ] Ruta `GET /api/files/:fileId/content` que lee el archivo del disco y devuelve el Markdown crudo.
+[X] Ruta `GET /api/files/:fileId/content` que lee el archivo del disco y devuelve el Markdown crudo.
 
 Verificacion:
 - Llamar a la ruta con fileId valido → contenido del archivo.
