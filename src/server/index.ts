@@ -3,9 +3,8 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { readFileSync } from 'fs'
 import { join } from 'path'
-import { PORT, DATA_DIR, ensureDataDir } from '../config.js'
-
-ensureDataDir()
+import { PORT, DATA_DIR } from '../config.js'
+import '../db.js'
 
 const app = new Hono()
 
