@@ -4,17 +4,14 @@
   "description": "Local Markdown review tool with inline comments for Claude agents",
   "type": "module",
   "bin": {
-    "claude-ping-pong": "dist/cli.js"
+    "claude-ping-pong": "dist/cli/index.js"
   },
   "scripts": {
-    "build": "pnpm build:server && pnpm build:cli && pnpm build:client",
-    "build:server": "tsc -p tsconfig.server.json",
-    "build:cli": "tsc -p tsconfig.cli.json",
-    "build:client": "vite build",
+    "build": "tsc -p tsconfig.node.json && vite build",
     "dev": "tsx watch src/server/index.ts",
     "dev:client": "vite",
     "start": "node dist/server/index.js",
-    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.cli.json"
+    "typecheck": "tsc --noEmit -p tsconfig.node.json"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
