@@ -3,6 +3,9 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import { Hono } from 'hono'
 import { readFileSync } from 'fs'
 import { join } from 'path'
+import { PORT, DATA_DIR, ensureDataDir } from '../config.js'
+
+ensureDataDir()
 
 const app = new Hono()
 
@@ -15,8 +18,7 @@ app.get('*', (c) => {
   return c.html(html)
 })
 
-const port = Number(process.env.CLAUDE_REVIEW_PORT ?? 3737)
-
-serve({ fetch: app.fetch, port }, () => {
-  console.log(`claude-ping-pong server running on http://localhost:${port}`)
+serve({ fetch: app.fetch, port: PORT }, () => {
+  console.log(`claude-ping-pong server running on http://localhost:${PORT}`)
+  console.log(`data dir: ${DATA_DIR}`)
 })
