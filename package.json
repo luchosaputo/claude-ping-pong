@@ -1,0 +1,44 @@
+{
+  "name": "claude-ping-pong",
+  "version": "0.1.0",
+  "description": "Local Markdown review tool with inline comments for Claude agents",
+  "type": "module",
+  "bin": {
+    "claude-ping-pong": "dist/cli.js"
+  },
+  "scripts": {
+    "build": "pnpm build:server && pnpm build:cli && pnpm build:client",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:cli": "tsc -p tsconfig.cli.json",
+    "build:client": "vite build",
+    "dev": "tsx watch src/server/index.ts",
+    "dev:client": "vite",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc --noEmit -p tsconfig.server.json && tsc --noEmit -p tsconfig.cli.json"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "better-sqlite3",
+      "esbuild"
+    ]
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.7",
+    "better-sqlite3": "^11.9.1",
+    "chokidar": "^4.0.3",
+    "hono": "^4.7.6",
+    "nanoid": "^5.1.5",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3",
+    "vite": "^6.2.5"
+  }
+}
