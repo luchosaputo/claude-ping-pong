@@ -331,10 +331,10 @@ Verificacion:
 
 ### Etapa 22: Implementar `claude-ping-pong comments`
 
-[ ] Lee directamente de SQLite. Devuelve JSON con hilos que cumplen:
+[X] Lee directamente de SQLite. Devuelve JSON con hilos que cumplen:
 - `status = 'open'`
 - `acknowledged = 0`
-- No tienen mensajes con `author = 'agent'`
+- El último mensaje del hilo tiene `author = 'user'`
 
 Al devolver, marca todos esos hilos como `acknowledged = 1` de forma atomica (en una transaccion).
 

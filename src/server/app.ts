@@ -133,9 +133,14 @@ app.post('/api/threads/:threadId/messages', async (c) => {
   const messageId = nanoid()
   const now = Date.now()
 
-  db.prepare(
-    "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)"
-  ).run(messageId, threadId, msgAuthor, messageBody.trim(), now)
+  db.transaction(() => {
+    db.prepare(
+      "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)"
+    ).run(messageId, threadId, msgAuthor, messageBody.trim(), now)
+    
+    // Reset acknowledged so the agent can see the thread again via polling
+    db.prepare("UPDATE threads SET acknowledged = 0 WHERE id = ?").run(threadId)
+  })()
 
   return c.json({ messageId }, 201)
 })
