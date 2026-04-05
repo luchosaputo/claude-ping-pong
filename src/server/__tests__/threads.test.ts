@@ -45,6 +45,60 @@ beforeEach(() => {
   mockNanoid.mockReturnValue('mock-id')
 })
 
+describe('POST /api/threads/:threadId/messages', () => {
+  function replyRequest(threadId: string, body: unknown) {
+    return app.request(`/api/threads/${threadId}/messages`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+  }
+
+  it('returns 400 when body is missing', async () => {
+    const res = await replyRequest('t1', {})
+    expect(res.status).toBe(400)
+    const data = await res.json() as { error: string }
+    expect(data.error).toMatch(/body/i)
+  })
+
+  it('returns 404 when thread does not exist', async () => {
+    getMock.mockReturnValue(null)
+    const res = await replyRequest('nonexistent', { body: 'hello' })
+    expect(res.status).toBe(404)
+    const data = await res.json() as { error: string }
+    expect(data.error).toMatch(/not found/i)
+  })
+
+  it('returns 409 when thread is resolved', async () => {
+    getMock.mockReturnValue({ id: 't1', status: 'resolved' })
+    const res = await replyRequest('t1', { body: 'hello' })
+    expect(res.status).toBe(409)
+  })
+
+  it('returns 201 with messageId on valid payload', async () => {
+    getMock.mockReturnValue({ id: 't1', status: 'open' })
+    mockNanoid.mockReturnValueOnce('msg-new')
+
+    const res = await replyRequest('t1', { body: 'A reply message' })
+    expect(res.status).toBe(201)
+    const data = await res.json() as { messageId: string }
+    expect(data.messageId).toBe('msg-new')
+  })
+
+  it('inserts message with author "user"', async () => {
+    getMock.mockReturnValue({ id: 't1', status: 'open' })
+    mockNanoid.mockReturnValueOnce('msg-new')
+
+    await replyRequest('t1', { body: 'reply text' })
+
+    const insertCall = runMock.mock.calls[0]
+    // run(messageId, threadId, body, created_at) — author is hardcoded in SQL
+    expect(insertCall[0]).toBe('msg-new')
+    expect(insertCall[1]).toBe('t1')
+    expect(insertCall[2]).toBe('reply text')
+  })
+})
+
 describe('POST /api/threads', () => {
   it('returns 400 when fileId is missing', async () => {
     const res = await jsonRequest({ selectedText: 'hello', body: 'comment' })
@@ -82,10 +136,10 @@ describe('POST /api/threads', () => {
 
     const res = await jsonRequest({
       fileId: 'file-123',
-      selectedText: 'el texto seleccionado',
-      body: 'Este fragmento necesita más detalle',
-      prefixContext: 'texto antes ',
-      suffixContext: ' texto después',
+      selectedText: 'the selected text',
+      body: 'This fragment needs more detail',
+      prefixContext: 'text before ',
+      suffixContext: ' text after',
       lineRangeStart: 10,
       lineRangeEnd: 10,
     })
@@ -99,7 +153,7 @@ describe('POST /api/threads', () => {
   it('inserts the thread and message inside a transaction', async () => {
     getMock.mockReturnValue({ id: 'file-123' })
 
-    await jsonRequest({ fileId: 'file-123', selectedText: 'texto', body: 'comentario' })
+    await jsonRequest({ fileId: 'file-123', selectedText: 'fragment', body: 'a comment' })
 
     expect(mockTransaction).toHaveBeenCalledOnce()
     // prepare was called for: SELECT + 2 INSERTs = 3 times
@@ -112,11 +166,11 @@ describe('POST /api/threads', () => {
     getMock.mockReturnValue({ id: 'file-123' })
     mockNanoid.mockReturnValueOnce('t1').mockReturnValueOnce('m1')
 
-    await jsonRequest({ fileId: 'file-123', selectedText: 'frag', body: 'mi opinión' })
+    await jsonRequest({ fileId: 'file-123', selectedText: 'frag', body: 'my opinion' })
 
     const messageInsertCall = runMock.mock.calls[1]
     // run(messageId, threadId, author, body, created_at)
     expect(messageInsertCall[2]).toBe('user')
-    expect(messageInsertCall[3]).toBe('mi opinión')
+    expect(messageInsertCall[3]).toBe('my opinion')
   })
 })

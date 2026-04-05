@@ -196,6 +196,13 @@ export default function Viewer({ fileId }: Props) {
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [replySaving, setReplySaving] = useState(false)
+  const [replyError, setReplyError] = useState<string | null>(null)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [messageEditText, setMessageEditText] = useState('')
+  const [messageEditSaving, setMessageEditSaving] = useState(false)
+  const [messageEditError, setMessageEditError] = useState<string | null>(null)
 
   const articleRef = useRef<HTMLElement>(null)
   const asideRef = useRef<HTMLElement>(null)
@@ -352,6 +359,15 @@ export default function Viewer({ fileId }: Props) {
     computePositions()
   }, [activeThreadId, computePositions])
 
+  // Clear reply + message-edit state when the active thread changes
+  useEffect(() => {
+    setReplyText('')
+    setReplyError(null)
+    setEditingMessageId(null)
+    setMessageEditText('')
+    setMessageEditError(null)
+  }, [activeThreadId])
+
   // ── Selection handling ────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -465,7 +481,7 @@ export default function Viewer({ fileId }: Props) {
       setCommentText('')
       loadThreads()
     } catch (err) {
-      setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: false, saveError: 'Error de red al guardar.' } : prev)
+      setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: false, saveError: 'Network error while saving.' } : prev)
     }
   }
 
@@ -502,14 +518,14 @@ export default function Viewer({ fileId }: Props) {
       setEditText('')
       loadThreads()
     } catch {
-      setEditError('Error de red al guardar.')
+      setEditError('Network error while saving.')
     } finally {
       setEditSaving(false)
     }
   }
 
   async function handleDelete(threadId: string) {
-    if (!confirm('¿Borrar este comentario?')) return
+    if (!confirm('Delete this comment?')) return
     try {
       const res = await fetch(`/api/threads/${threadId}`, { method: 'DELETE' })
       if (!res.ok) {
@@ -520,7 +536,83 @@ export default function Viewer({ fileId }: Props) {
       if (activeThreadId === threadId) setActiveThreadId(null)
       loadThreads()
     } catch {
-      alert('Error de red al borrar.')
+      alert('Network error while deleting.')
+    }
+  }
+
+  async function handleReply(threadId: string) {
+    if (!replyText.trim() || replySaving) return
+    setReplySaving(true)
+    setReplyError(null)
+    try {
+      const res = await fetch(`/api/threads/${threadId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: replyText }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        setReplyError(err.error)
+        return
+      }
+      setReplyText('')
+      loadThreads()
+    } catch {
+      setReplyError('Network error while sending.')
+    } finally {
+      setReplySaving(false)
+    }
+  }
+
+  function handleStartMessageEdit(msg: Message) {
+    setEditingMessageId(msg.id)
+    setMessageEditText(msg.body)
+    setMessageEditError(null)
+  }
+
+  function handleMessageEditCancel() {
+    setEditingMessageId(null)
+    setMessageEditText('')
+    setMessageEditError(null)
+  }
+
+  async function handleMessageEditSave(messageId: string) {
+    if (!messageEditText.trim() || messageEditSaving) return
+    setMessageEditSaving(true)
+    setMessageEditError(null)
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: messageEditText }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        setMessageEditError(err.error)
+        return
+      }
+      setEditingMessageId(null)
+      setMessageEditText('')
+      loadThreads()
+    } catch {
+      setMessageEditError('Network error while saving.')
+    } finally {
+      setMessageEditSaving(false)
+    }
+  }
+
+  async function handleMessageDelete(messageId: string) {
+    if (!confirm('Delete this reply?')) return
+    try {
+      const res = await fetch(`/api/messages/${messageId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        alert(err.error)
+        return
+      }
+      loadThreads()
+    } catch {
+      alert('Network error while deleting.')
     }
   }
 
@@ -594,7 +686,7 @@ export default function Viewer({ fileId }: Props) {
                 <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
                   <button
                     style={styles.iconBtn}
-                    title="Editar comentario"
+                    title="Edit comment"
                     onClick={() => handleStartEdit(thread)}
                   >
                     {/* pencil */}
@@ -605,7 +697,7 @@ export default function Viewer({ fileId }: Props) {
                   </button>
                   <button
                     style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
-                    title="Borrar comentario"
+                    title="Delete comment"
                     onClick={() => handleDelete(thread.threadId)}
                   >
                     {/* trash */}
@@ -622,25 +714,150 @@ export default function Viewer({ fileId }: Props) {
             </div>
             <div style={styles.messageList}>
               {thread.messages
-                .filter((msg, i) => !(isEditing && i === 0 && msg.author === 'user'))
-                .map((msg, i) => (
-                  <div
-                    key={msg.id}
-                    style={{
-                      ...styles.message_,
-                      ...(i > 0 ? styles.messageSeparated : {}),
-                    }}
-                  >
-                    <span style={{
-                      ...styles.authorLabel,
-                      ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
-                    }}>
-                      {msg.author === 'agent' ? 'Agent' : 'You'}
-                    </span>
-                    <p style={styles.messageBody}>{msg.body}</p>
-                  </div>
-                ))}
+                .filter((msg, i) => {
+                  if (isEditing && i === 0 && msg.author === 'user') return false
+                  // Only show replies when the card is active
+                  const isRootMessage = msg.id === thread.messages[0]?.id
+                  if (!isActive && !isRootMessage) return false
+                  return true
+                })
+                .map((msg, i) => {
+                  const isRootMessage = msg.id === thread.messages[0]?.id
+                  const isEditingThisMessage = editingMessageId === msg.id
+                  return (
+                    <div
+                      key={msg.id}
+                      style={{
+                        ...styles.message_,
+                        ...(i > 0 && !isEditingThisMessage ? styles.messageSeparated : {}),
+                      }}
+                    >
+                      {isEditingThisMessage ? (
+                        <div style={styles.editArea} onClick={(e) => e.stopPropagation()}>
+                          <textarea
+                            style={styles.editTextarea}
+                            value={messageEditText}
+                            onChange={(e) => {
+                              setMessageEditText(e.target.value)
+                              e.target.style.height = 'auto'
+                              e.target.style.height = e.target.scrollHeight + 'px'
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Escape') handleMessageEditCancel()
+                              else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && messageEditText.trim()) handleMessageEditSave(msg.id)
+                            }}
+                            autoFocus
+                            rows={2}
+                          />
+                          {messageEditError && <div style={styles.saveError}>{messageEditError}</div>}
+                          <div style={styles.actions}>
+                            <button style={styles.cancelBtn} onClick={handleMessageEditCancel} disabled={messageEditSaving}>
+                              Cancel
+                            </button>
+                            <button
+                              style={{
+                                ...styles.saveBtn,
+                                opacity: (messageEditText.trim() && !messageEditSaving) ? 1 : 0.5,
+                                cursor: (messageEditText.trim() && !messageEditSaving) ? 'pointer' : 'default',
+                              }}
+                              onClick={() => handleMessageEditSave(msg.id)}
+                              disabled={!messageEditText.trim() || messageEditSaving}
+                            >
+                              {messageEditSaving ? 'Saving…' : 'Save'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{
+                              ...styles.authorLabel,
+                              ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
+                            }}>
+                              {msg.author === 'agent' ? 'Agent' : 'You'}
+                            </span>
+                            {isActive && !isRootMessage && msg.author === 'user' && (
+                              <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
+                                <button
+                                  style={styles.iconBtn}
+                                  title="Edit reply"
+                                  onClick={() => handleStartMessageEdit(msg)}
+                                >
+                                  {/* pencil */}
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                  </svg>
+                                </button>
+                                <button
+                                  style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
+                                  title="Delete reply"
+                                  onClick={() => handleMessageDelete(msg.id)}
+                                >
+                                  {/* trash */}
+                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="3 6 5 6 21 6"/>
+                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                    <path d="M10 11v6"/>
+                                    <path d="M14 11v6"/>
+                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                  </svg>
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                          <p style={styles.messageBody}>{msg.body}</p>
+                        </>
+                      )}
+                    </div>
+                  )
+                })}
             </div>
+
+            {isActive && !isEditing && (
+              <div style={styles.replyArea} onClick={(e) => e.stopPropagation()}>
+                <textarea
+                  style={styles.replyTextarea}
+                  placeholder="Reply…"
+                  value={replyText}
+                  onChange={(e) => {
+                    setReplyText(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') setReplyText('')
+                    else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && replyText.trim()) handleReply(thread.threadId)
+                  }}
+                  rows={1}
+                />
+                {replyError && <div style={{ ...styles.saveError, marginTop: '4px' }}>{replyError}</div>}
+                {replyText.trim() && (
+                  <div style={{ ...styles.actions, marginTop: '6px' }}>
+                    <button
+                      style={{ ...styles.cancelBtn, padding: '4px 10px', fontSize: '12px' }}
+                      onClick={() => setReplyText('')}
+                      disabled={replySaving}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      style={{
+                        ...styles.saveBtn,
+                        padding: '4px 12px',
+                        fontSize: '12px',
+                        opacity: !replySaving ? 1 : 0.5,
+                        cursor: !replySaving ? 'pointer' : 'default',
+                      }}
+                      onClick={() => handleReply(thread.threadId)}
+                      disabled={replySaving}
+                    >
+                      {replySaving ? 'Sending…' : 'Reply'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
 
             {isActive && isEditing && (
               <div style={styles.editArea} onClick={(e) => e.stopPropagation()}>
@@ -662,7 +879,7 @@ export default function Viewer({ fileId }: Props) {
                 {editError && <div style={styles.saveError}>{editError}</div>}
                 <div style={styles.actions}>
                   <button style={styles.cancelBtn} onClick={handleEditCancel} disabled={editSaving}>
-                    Cancelar
+                    Cancel
                   </button>
                   <button
                     style={{
@@ -673,7 +890,7 @@ export default function Viewer({ fileId }: Props) {
                     onClick={() => handleEditSave(thread.threadId)}
                     disabled={!editText.trim() || editSaving}
                   >
-                    {editSaving ? 'Guardando…' : 'Guardar'}
+                    {editSaving ? 'Saving…' : 'Save'}
                   </button>
                 </div>
               </div>
@@ -684,7 +901,7 @@ export default function Viewer({ fileId }: Props) {
 
       {selection.kind === 'valid' && (
         <button
-          title="Agregar comentario"
+          title="Add comment"
           style={{
             ...styles.addCommentBtn,
             left: selection.buttonX,
@@ -707,7 +924,7 @@ export default function Viewer({ fileId }: Props) {
             top: selection.tooltipY,
           }}
         >
-          Los comentarios deben estar dentro de un mismo párrafo.
+          Comments must be within a single paragraph.
         </div>
       )}
 
@@ -729,7 +946,7 @@ export default function Viewer({ fileId }: Props) {
             <textarea
               ref={textareaRef}
               style={styles.textarea}
-              placeholder="Agregar un comentario…"
+              placeholder="Add a comment…"
               value={commentText}
               onChange={(e) => {
                 setCommentText(e.target.value)
@@ -752,7 +969,7 @@ export default function Viewer({ fileId }: Props) {
               onClick={handleCancel}
               disabled={selection.saving}
             >
-              Cancelar
+              Cancel
             </button>
             <button
               style={{
@@ -764,7 +981,7 @@ export default function Viewer({ fileId }: Props) {
               onClick={handleSave}
               disabled={!commentText.trim() || selection.saving}
             >
-              {selection.saving ? 'Guardando…' : 'Comentar'}
+              {selection.saving ? 'Saving…' : 'Comment'}
             </button>
           </div>
         </div>
@@ -984,6 +1201,25 @@ const styles = {
   },
   iconBtnDanger: {
     color: '#cc2222',
+  },
+  replyArea: {
+    marginTop: '10px',
+  },
+  replyTextarea: {
+    width: '100%',
+    border: '1px solid var(--card-border)',
+    borderRadius: '20px',
+    outline: 'none',
+    resize: 'none' as const,
+    fontFamily: 'Roboto, Arial, sans-serif',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    color: 'var(--text)',
+    background: 'transparent',
+    padding: '7px 14px',
+    boxSizing: 'border-box' as const,
+    overflow: 'hidden',
+    display: 'block',
   },
   editArea: {
     marginTop: '10px',

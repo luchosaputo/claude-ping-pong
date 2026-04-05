@@ -107,6 +107,35 @@ app.get('/api/files/:fileId/threads', (c) => {
   return c.json([...map.values()])
 })
 
+app.post('/api/threads/:threadId/messages', async (c) => {
+  const { threadId } = c.req.param()
+
+  let body: Record<string, unknown>
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const { body: messageBody } = body as Record<string, unknown>
+  if (!messageBody || typeof messageBody !== 'string' || !messageBody.trim()) {
+    return c.json({ error: 'body is required' }, 400)
+  }
+
+  const thread = db.prepare<[string], { id: string; status: string }>('SELECT id, status FROM threads WHERE id = ?').get(threadId)
+  if (!thread) return c.json({ error: 'Thread not found' }, 404)
+  if (thread.status === 'resolved') return c.json({ error: 'Cannot reply to a resolved thread' }, 409)
+
+  const messageId = nanoid()
+  const now = Date.now()
+
+  db.prepare(
+    "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, 'user', ?, ?)"
+  ).run(messageId, threadId, messageBody.trim(), now)
+
+  return c.json({ messageId }, 201)
+})
+
 app.patch('/api/threads/:threadId', async (c) => {
   const { threadId } = c.req.param()
 
@@ -154,6 +183,50 @@ app.delete('/api/threads/:threadId', (c) => {
     db.prepare('DELETE FROM threads WHERE id = ?').run(threadId)
   })()
 
+  return c.json({ ok: true })
+})
+
+app.patch('/api/messages/:messageId', async (c) => {
+  const { messageId } = c.req.param()
+
+  let body: Record<string, unknown>
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const { body: newBody } = body as Record<string, unknown>
+  if (!newBody || typeof newBody !== 'string' || !newBody.trim()) {
+    return c.json({ error: 'body is required' }, 400)
+  }
+
+  const message = db.prepare<[string], { id: string; author: string }>(
+    'SELECT id, author FROM messages WHERE id = ?'
+  ).get(messageId)
+  if (!message) return c.json({ error: 'Message not found' }, 404)
+  if (message.author !== 'user') return c.json({ error: 'Cannot edit agent messages' }, 403)
+
+  db.prepare('UPDATE messages SET body = ? WHERE id = ?').run(newBody.trim(), messageId)
+  return c.json({ ok: true })
+})
+
+app.delete('/api/messages/:messageId', (c) => {
+  const { messageId } = c.req.param()
+
+  const message = db.prepare<[string], { id: string; author: string; thread_id: string }>(
+    'SELECT id, author, thread_id FROM messages WHERE id = ?'
+  ).get(messageId)
+  if (!message) return c.json({ error: 'Message not found' }, 404)
+  if (message.author !== 'user') return c.json({ error: 'Cannot delete agent messages' }, 403)
+
+  // Prevent deleting the root message via this endpoint (use DELETE /api/threads/:id instead)
+  const rootMsg = db.prepare<[string], { id: string }>(
+    'SELECT id FROM messages WHERE thread_id = ? ORDER BY created_at ASC LIMIT 1'
+  ).get(message.thread_id)
+  if (rootMsg?.id === messageId) return c.json({ error: 'Cannot delete the root message directly. Delete the thread instead.' }, 409)
+
+  db.prepare('DELETE FROM messages WHERE id = ?').run(messageId)
   return c.json({ ok: true })
 })
 

@@ -278,7 +278,7 @@ Verificacion:
 
 ### Etapa 17: Cargar comentarios existentes al abrir el viewer
 
-[ ] `GET /api/files/:fileId/threads` devuelve hilos no resueltos con sus mensajes. El viewer los carga al montar.
+[X] `GET /api/files/:fileId/threads` devuelve hilos no resueltos con sus mensajes. El viewer los carga al montar.
 
 Verificacion:
 - Crear comentarios, cerrar y reabrir la pagina.
@@ -286,7 +286,7 @@ Verificacion:
 
 ### Etapa 18: Editar y borrar comentario sin respuestas
 
-[ ] Agregar accion para editar el texto del comentario raiz cuando el hilo no tiene respuestas del agente. Agregar accion para borrar el hilo completo bajo la misma condicion.
+[X] Agregar accion para editar el texto del comentario raiz SOLO cuando el hilo no tiene respuestas del agente. Agregar accion para borrar el hilo completo bajo la misma condicion.
 
 Verificacion:
 - Editar comentario → nuevo texto persiste y se ve al recargar.
@@ -299,7 +299,9 @@ Verificacion:
 
 ### Etapa 19: Crear respuestas dentro de un hilo
 
-[ ] `POST /api/threads/:threadId/messages` crea una nueva fila en `messages`. El autor es `user` cuando viene del navegador.
+[X] `POST /api/threads/:threadId/messages` crea una nueva fila en `messages`. El autor es `user` cuando viene del navegador.
+
+Agregar nuevo input cuando la card queda activa que permite al user generar un nuevo reply.
 
 Verificacion:
 - Responder un hilo desde el navegador.
