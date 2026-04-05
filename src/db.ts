@@ -19,7 +19,6 @@ function createDb(): Database.Database {
       id                TEXT PRIMARY KEY,
       file_id           TEXT NOT NULL REFERENCES files(id),
       status            TEXT NOT NULL DEFAULT 'open',
-      acknowledged      INTEGER NOT NULL DEFAULT 0,
       selected_text     TEXT NOT NULL,
       prefix_context    TEXT,
       suffix_context    TEXT,
@@ -33,6 +32,7 @@ function createDb(): Database.Database {
       thread_id   TEXT NOT NULL REFERENCES threads(id),
       author      TEXT NOT NULL,
       body        TEXT NOT NULL,
+      acknowledged INTEGER NOT NULL DEFAULT 0,
       created_at  INTEGER NOT NULL
     );
   `)
