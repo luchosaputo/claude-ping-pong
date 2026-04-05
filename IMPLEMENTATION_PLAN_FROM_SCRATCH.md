@@ -319,7 +319,7 @@ Verificacion:
 
 ### Etapa 21: Resolver un hilo desde la interfaz
 
-[ ] `PATCH /api/threads/:threadId/resolve` marca `status = 'resolved'`. Agregar boton en la tarjeta del hilo.
+[X] `PATCH /api/threads/:threadId/resolve` marca `status = 'resolved'`. Agregar boton en la tarjeta del hilo.
 
 Verificacion:
 - Resolver un hilo → desaparece del viewer (solo se muestran hilos abiertos).

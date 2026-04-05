@@ -230,7 +230,7 @@ export default function Viewer({ fileId }: Props) {
     fetch(`/api/files/${fileId}/threads`)
       .then((r) => (r.ok ? (r.json() as Promise<Thread[]>) : Promise.reject()))
       .then(setThreads)
-      .catch(() => {})
+      .catch(() => { })
   }
 
   useEffect(() => {
@@ -252,8 +252,8 @@ export default function Viewer({ fileId }: Props) {
         const block = mark
           ? null
           : (article.querySelector(
-              `[data-line-start="${thread.lineRangeStart}"]`
-            ) as HTMLElement | null)
+            `[data-line-start="${thread.lineRangeStart}"]`
+          ) as HTMLElement | null)
         const anchor = mark ?? block
         const idealTop = anchor
           ? anchor.getBoundingClientRect().top + window.scrollY
@@ -540,6 +540,21 @@ export default function Viewer({ fileId }: Props) {
     }
   }
 
+  async function handleResolve(threadId: string) {
+    try {
+      const res = await fetch(`/api/threads/${threadId}/resolve`, { method: 'PATCH' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        alert(err.error)
+        return
+      }
+      if (activeThreadId === threadId) setActiveThreadId(null)
+      loadThreads()
+    } catch {
+      alert('Network error while resolving.')
+    }
+  }
+
   async function handleReply(threadId: string) {
     if (!replyText.trim() || replySaving) return
     setReplySaving(true)
@@ -682,33 +697,46 @@ export default function Viewer({ fileId }: Props) {
                   ? thread.selectedText.slice(0, 80) + '…'
                   : thread.selectedText}"
               </div>
-              {isActive && !hasAgentReply && !isEditing && (
+              {isActive && !isEditing && (
                 <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
                   <button
                     style={styles.iconBtn}
-                    title="Edit comment"
-                    onClick={() => handleStartEdit(thread)}
+                    title="Resolve thread"
+                    onClick={() => handleResolve(thread.threadId)}
                   >
-                    {/* pencil */}
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </button>
-                  <button
-                    style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
-                    title="Delete comment"
-                    onClick={() => handleDelete(thread.threadId)}
-                  >
-                    {/* trash */}
-                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <polyline points="3 6 5 6 21 6"/>
-                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                      <path d="M10 11v6"/>
-                      <path d="M14 11v6"/>
-                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                    </svg>
-                  </button>
+                  {!hasAgentReply && (
+                    <>
+                      <button
+                        style={styles.iconBtn}
+                        title="Edit comment"
+                        onClick={() => handleStartEdit(thread)}
+                      >
+                        {/* pencil */}
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                      <button
+                        style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
+                        title="Delete comment"
+                        onClick={() => handleDelete(thread.threadId)}
+                      >
+                        {/* trash */}
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="3 6 5 6 21 6" />
+                          <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                          <path d="M10 11v6" />
+                          <path d="M14 11v6" />
+                          <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                        </svg>
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>
@@ -776,7 +804,7 @@ export default function Viewer({ fileId }: Props) {
                             }}>
                               {msg.author === 'agent' ? (
                                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
-                                  <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                                  <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
                                 </svg>
                               ) : 'U'}
                             </div>
@@ -797,8 +825,8 @@ export default function Viewer({ fileId }: Props) {
                                     >
                                       {/* pencil */}
                                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                       </svg>
                                     </button>
                                     <button
@@ -808,11 +836,11 @@ export default function Viewer({ fileId }: Props) {
                                     >
                                       {/* trash */}
                                       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                        <polyline points="3 6 5 6 21 6"/>
-                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                        <path d="M10 11v6"/>
-                                        <path d="M14 11v6"/>
-                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                        <polyline points="3 6 5 6 21 6" />
+                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                                        <path d="M10 11v6" />
+                                        <path d="M14 11v6" />
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
                                       </svg>
                                     </button>
                                   </div>
@@ -1163,6 +1191,8 @@ const styles = {
   },
   quotedText: {
     flex: 1,
+    minWidth: 0,
+    wordBreak: 'break-word' as const,
     fontSize: '12px',
     color: 'var(--muted)',
     fontStyle: 'italic' as const,
@@ -1225,7 +1255,8 @@ const styles = {
   quotedTextRow: {
     display: 'flex',
     alignItems: 'flex-start',
-    gap: '4px',
+    justifyContent: 'space-between',
+    gap: '8px',
     marginBottom: '10px',
   },
   quoteIcons: {

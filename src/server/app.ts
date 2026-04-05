@@ -190,6 +190,17 @@ app.delete('/api/threads/:threadId', (c) => {
   return c.json({ ok: true })
 })
 
+app.patch('/api/threads/:threadId/resolve', (c) => {
+  const { threadId } = c.req.param()
+
+  const thread = db.prepare<[string], { id: string }>('SELECT id FROM threads WHERE id = ?').get(threadId)
+  if (!thread) return c.json({ error: 'Thread not found' }, 404)
+
+  db.prepare("UPDATE threads SET status = 'resolved' WHERE id = ?").run(threadId)
+
+  return c.json({ ok: true })
+})
+
 app.patch('/api/messages/:messageId', async (c) => {
   const { messageId } = c.req.param()
 
