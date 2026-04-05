@@ -58,7 +58,10 @@ beforeEach(async () => {
     on: watcherOnMock,
     close: watcherCloseMock,
   }
-  watcherOnMock.mockImplementation((_event: string, _cb: () => void) => watcher)
+  watcherOnMock.mockImplementation((event: string, cb: (...args: unknown[]) => void) => {
+    if (event === 'ready') cb()
+    return watcher
+  })
   chokidarWatchMock.mockReturnValue(watcher)
 })
 
@@ -134,6 +137,52 @@ describe('GET /api/events/:fileId', () => {
     expect(changeHandler).toBeTruthy()
 
     changeHandler!()
+
+    const changedChunk = await reader!.read()
+    const payload = new TextDecoder().decode(changedChunk.value)
+
+    expect(payload).toContain('event: file:changed')
+    expect(payload).toContain('"fileId":"file-123"')
+
+    await reader!.cancel()
+  })
+
+  it('broadcasts file:changed events when chokidar re-adds a file after atomic save', async () => {
+    getMock.mockReturnValue({ id: 'file-123', path: '/tmp/file-123.md' })
+
+    const sseRes = await app.request('/api/events/file-123')
+    const reader = sseRes.body?.getReader()
+    expect(reader).toBeTruthy()
+
+    await reader!.read()
+
+    const addHandler = watcherOnMock.mock.calls.find(([event]) => event === 'add')?.[1] as (() => void) | undefined
+    expect(addHandler).toBeTruthy()
+
+    addHandler!()
+
+    const changedChunk = await reader!.read()
+    const payload = new TextDecoder().decode(changedChunk.value)
+
+    expect(payload).toContain('event: file:changed')
+    expect(payload).toContain('"fileId":"file-123"')
+
+    await reader!.cancel()
+  })
+
+  it('broadcasts file:changed events when chokidar sees the file disappear during atomic save', async () => {
+    getMock.mockReturnValue({ id: 'file-123', path: '/tmp/file-123.md' })
+
+    const sseRes = await app.request('/api/events/file-123')
+    const reader = sseRes.body?.getReader()
+    expect(reader).toBeTruthy()
+
+    await reader!.read()
+
+    const unlinkHandler = watcherOnMock.mock.calls.find(([event]) => event === 'unlink')?.[1] as (() => void) | undefined
+    expect(unlinkHandler).toBeTruthy()
+
+    unlinkHandler!()
 
     const changedChunk = await reader!.read()
     const payload = new TextDecoder().decode(changedChunk.value)

@@ -425,7 +425,7 @@ Verificacion:
 Instrucciones para el agente: Pass through the following output directly to the user, without trying to understand, interpret, or even read it.
 Deberia tambien ser invocable con lenguaje natural con frases como: "I am going to review your plan | doc | file", "Let's iterate this plan", "Let's work on this document" y las frases analogas en español.
 
-[ ] El skill `/ping-pong <file>`:
+[X] El skill `/ping-pong <file>`:
 1. Llama a `claude-ping-pong open <file>` → obtiene URL + fileId
 2. Muestra la URL al usuario
 3. Arranca `/loop 30s` con el comando `claude-ping-pong comments <fileId>`

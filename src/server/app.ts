@@ -16,6 +16,7 @@ type SseConnection = {
 
 const sseConnectionsByFileId = new Map<string, Set<SseConnection>>()
 const fileWatchersByFileId = new Map<string, FSWatcher>()
+const fileWatcherReadyByFileId = new Map<string, Promise<void>>()
 
 function formatSseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -43,36 +44,66 @@ export function emitFileEvent(fileId: string, event: string, data: unknown): voi
   }
 }
 
-function ensureFileWatcher(fileId: string, path: string): void {
-  if (fileWatchersByFileId.has(fileId)) return
+function ensureFileWatcher(fileId: string, path: string): Promise<void> {
+  const existingReady = fileWatcherReadyByFileId.get(fileId)
+  if (existingReady) return existingReady
 
   const watcher = chokidar.watch(path, {
     ignoreInitial: true,
+    awaitWriteFinish: {
+      stabilityThreshold: 100,
+      pollInterval: 20,
+    },
   })
 
-  watcher.on('change', () => {
+  const emitChange = () => {
     emitFileEvent(fileId, 'file:changed', {
       fileId,
       timestamp: Date.now(),
     })
-  })
+  }
+
+  watcher.on('change', emitChange)
+  watcher.on('add', emitChange)
+  watcher.on('unlink', emitChange)
 
   fileWatchersByFileId.set(fileId, watcher)
+  const ready = new Promise<void>((resolve, reject) => {
+    watcher.on('ready', () => resolve())
+    watcher.on('error', (error) => reject(error))
+  })
+  fileWatcherReadyByFileId.set(fileId, ready)
+
+  ready.catch(async () => {
+    fileWatcherReadyByFileId.delete(fileId)
+    const current = fileWatchersByFileId.get(fileId)
+    if (current === watcher) {
+      fileWatchersByFileId.delete(fileId)
+      await watcher.close().catch(() => {})
+    }
+  })
+
+  return ready
 }
 
 export async function closeFileWatchersForTests(): Promise<void> {
   await Promise.all(Array.from(fileWatchersByFileId.values(), (watcher) => watcher.close()))
   fileWatchersByFileId.clear()
+  fileWatcherReadyByFileId.clear()
 }
 
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
-app.get('/api/events/:fileId', (c) => {
+app.get('/api/events/:fileId', async (c) => {
   const { fileId } = c.req.param()
   const file = db.prepare<[string], { id: string; path: string }>('SELECT id, path FROM files WHERE id = ?').get(fileId)
   if (!file) return c.json({ error: 'File not found' }, 404)
 
-  ensureFileWatcher(fileId, file.path)
+  try {
+    await ensureFileWatcher(fileId, file.path)
+  } catch {
+    return c.json({ error: 'Failed to start file watcher' }, 500)
+  }
 
   const encoder = new TextEncoder()
 
@@ -127,12 +158,16 @@ app.get('/api/events/:fileId', (c) => {
   })
 })
 
-app.post('/api/files/:fileId/watch', (c) => {
+app.post('/api/files/:fileId/watch', async (c) => {
   const { fileId } = c.req.param()
   const file = db.prepare<[string], { id: string; path: string }>('SELECT id, path FROM files WHERE id = ?').get(fileId)
   if (!file) return c.json({ error: 'File not found' }, 404)
 
-  ensureFileWatcher(fileId, file.path)
+  try {
+    await ensureFileWatcher(fileId, file.path)
+  } catch {
+    return c.json({ error: 'Failed to start file watcher' }, 500)
+  }
   return c.json({ ok: true })
 })
 

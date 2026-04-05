@@ -281,25 +281,31 @@ export default function Viewer({ fileId }: Props) {
   const activeThreadIdRef = useRef<string | null>(activeThreadId)
   activeThreadIdRef.current = activeThreadId
   const contentVersion = state.status === 'ready' ? state.content : ''
+  const latestContentRef = useRef(contentVersion)
+  latestContentRef.current = contentVersion
 
   // ── Data loading ──────────────────────────────────────────────────────────
+
+  const fetchContent = useCallback(async () => {
+    const res = await fetch(`/api/files/${fileId}/content`)
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
+      throw new Error(body.error ?? res.statusText)
+    }
+    return res.text()
+  }, [fileId])
 
   const loadContent = useCallback(async () => {
     const requestId = ++contentRequestIdRef.current
     try {
-      const res = await fetch(`/api/files/${fileId}/content`)
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
-        throw new Error(body.error ?? res.statusText)
-      }
-      const content = await res.text()
+      const content = await fetchContent()
       if (contentRequestIdRef.current !== requestId) return
       setState({ status: 'ready', content })
     } catch (err) {
       if (contentRequestIdRef.current !== requestId) return
       setState({ status: 'error', message: String(err) })
     }
-  }, [fileId])
+  }, [fetchContent])
 
   useEffect(() => {
     setState({ status: 'loading' })
@@ -365,6 +371,25 @@ export default function Viewer({ fileId }: Props) {
       eventSource.close()
     }
   }, [fileId, loadContent])
+
+  useEffect(() => {
+    if (state.status !== 'ready') return
+
+    const interval = window.setInterval(() => {
+      const requestId = ++contentRequestIdRef.current
+      void fetchContent()
+        .then((nextContent) => {
+          if (contentRequestIdRef.current !== requestId) return
+          if (nextContent === latestContentRef.current) return
+          setSelection({ kind: 'none' })
+          setCommentText('')
+          setState({ status: 'ready', content: nextContent })
+        })
+        .catch(() => { })
+    }, 2000)
+
+    return () => window.clearInterval(interval)
+  }, [fetchContent, fileId, state.status])
 
   // ── Position algorithm ────────────────────────────────────────────────────
 
