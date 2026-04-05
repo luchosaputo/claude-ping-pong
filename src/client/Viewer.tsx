@@ -3,6 +3,34 @@ import ReactMarkdown from 'react-markdown'
 import { remarkLineData } from './markdown.js'
 import { computeThreadCardPositions } from './threadPositions.js'
 
+type Theme = 'system' | 'light' | 'dark'
+
+function applyTheme(theme: Theme) {
+  const root = document.documentElement
+  if (theme === 'system') {
+    root.removeAttribute('data-theme')
+  } else {
+    root.setAttribute('data-theme', theme)
+  }
+}
+
+function useTheme() {
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = (localStorage.getItem('theme') as Theme) ?? 'system'
+    applyTheme(saved)  // apply synchronously to avoid flash on load
+    return saved
+  })
+
+  useEffect(() => {
+    applyTheme(theme)
+    localStorage.setItem('theme', theme)
+  }, [theme])
+
+  const cycle = () => setTheme(t => t === 'system' ? 'light' : t === 'light' ? 'dark' : 'system')
+
+  return { theme, cycle }
+}
+
 interface Props {
   fileId: string
 }
@@ -241,7 +269,42 @@ function setsEqual(left: Set<string>, right: Set<string>): boolean {
   return true
 }
 
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <line x1="12" y1="1" x2="12" y2="3" />
+      <line x1="12" y1="21" x2="12" y2="23" />
+      <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+      <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+      <line x1="1" y1="12" x2="3" y2="12" />
+      <line x1="21" y1="12" x2="23" y2="12" />
+      <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+      <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+    </svg>
+  )
+}
+
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
+    </svg>
+  )
+}
+
+function SystemIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 3v9l4.5 4.5" strokeOpacity="0" />
+      <path d="M12 3a9 9 0 0 1 0 18V3z" fill="currentColor" stroke="none" />
+    </svg>
+  )
+}
+
 export default function Viewer({ fileId }: Props) {
+  const { theme, cycle: cycleTheme } = useTheme()
   const [state, setState] = useState<State>({ status: 'loading' })
   const [selection, setSelection] = useState<SelectionState>({ kind: 'none' })
   const [commentText, setCommentText] = useState('')
@@ -823,6 +886,14 @@ export default function Viewer({ fileId }: Props) {
 
   return (
     <div style={styles.layout}>
+      <button
+        onClick={cycleTheme}
+        title={theme === 'system' ? 'Theme: System' : theme === 'light' ? 'Theme: Light' : 'Theme: Dark'}
+        style={styles.themeToggle}
+      >
+        {theme === 'light' ? <SunIcon /> : theme === 'dark' ? <MoonIcon /> : <SystemIcon />}
+      </button>
+
       <article ref={articleRef} style={styles.document}>
         <ReactMarkdown remarkPlugins={[remarkLineData]}>
           {state.content}
@@ -1580,5 +1651,22 @@ const styles = {
     padding: '4px 0',
     borderBottom: '2px solid var(--accent)',
     overflow: 'hidden',
+  },
+  themeToggle: {
+    position: 'fixed' as const,
+    top: '20px',
+    right: '24px',
+    zIndex: 500,
+    background: 'var(--card-bg)',
+    border: '1px solid var(--card-border)',
+    borderRadius: '8px',
+    padding: '8px',
+    cursor: 'pointer',
+    color: 'var(--muted)',
+    lineHeight: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    boxShadow: '0 1px 4px var(--card-shadow)',
   },
 } as const

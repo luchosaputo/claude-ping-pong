@@ -15,8 +15,10 @@
   --agent-bg: rgba(204, 112, 81, 0.08);
 }
 
+/* System dark — only when user hasn't chosen manually */
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme]) {
+    color-scheme: dark;
     --bg: #141414;
     --text: #e8e8e8;
     --muted: #9aa0a6;
@@ -31,6 +33,42 @@
     --agent-accent: #dca38d;
     --agent-bg: rgba(220, 163, 141, 0.1);
   }
+}
+
+/* Manual: force light */
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --text: #1a1a1a;
+  --muted: #666666;
+  --card-bg: #ffffff;
+  --card-border: #e0e0e0;
+  --card-shadow: rgba(0, 0, 0, 0.15);
+  --accent: #1a73e8;
+  --accent-muted: rgba(26, 115, 232, 0.12);
+  --quote-border: #fbbc04;
+  --highlight: rgba(255, 213, 0, 0.35);
+  --highlight-active: rgba(255, 171, 0, 0.55);
+  --agent-accent: #cc7051;
+  --agent-bg: rgba(204, 112, 81, 0.08);
+}
+
+/* Manual: force dark */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #141414;
+  --text: #e8e8e8;
+  --muted: #9aa0a6;
+  --card-bg: #2a2a2a;
+  --card-border: #3d3d3d;
+  --card-shadow: rgba(0, 0, 0, 0.45);
+  --accent: #8ab4f8;
+  --accent-muted: rgba(138, 180, 248, 0.12);
+  --quote-border: #f9ab00;
+  --highlight: rgba(255, 213, 0, 0.25);
+  --highlight-active: rgba(255, 171, 0, 0.4);
+  --agent-accent: #dca38d;
+  --agent-bg: rgba(220, 163, 141, 0.1);
 }
 
 mark[data-thread-id] {
