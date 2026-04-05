@@ -64,6 +64,21 @@ export default defineCommand({
       })()
     }
 
-    console.log(JSON.stringify(Array.from(threadsMap.values()), null, 2))
+    const payload = Array.from(threadsMap.values()).map(t => {
+      const msgs = t.messages
+      const lastMsg = msgs.pop()
+      const formatted: any = {
+        threadId: t.threadId,
+        fragment: t.fragment,
+        lineRange: t.lineRange,
+        messages: [lastMsg] // Only the last message goes here
+      }
+      if (msgs.length > 0) {
+        formatted.context = msgs // All preceding messages
+      }
+      return formatted
+    })
+
+    console.log(JSON.stringify(payload, null, 2))
   }
 })
