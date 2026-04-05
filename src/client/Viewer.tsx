@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { remarkLineData } from './markdown.js'
+import { computeThreadCardPositions } from './threadPositions.js'
 
 interface Props {
   fileId: string
@@ -51,8 +52,6 @@ interface ThreadUpdatedEvent {
   type: 'reply' | 'resolve'
   timestamp: number
 }
-
-const CARD_GAP = 8
 
 function findBlockAncestor(node: Node, root: Element): Element | null {
   let el: Node | null = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
@@ -215,12 +214,15 @@ export default function Viewer({ fileId }: Props) {
   const articleRef = useRef<HTMLElement>(null)
   const asideRef = useRef<HTMLElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const composingCardRef = useRef<HTMLDivElement>(null)
   const cardEls = useRef(new Map<string, HTMLDivElement>())
   const posRafRef = useRef<number | null>(null)
 
   // Expose latest threads to the stable scroll handler without re-registering
   const threadsRef = useRef<Thread[]>(threads)
   threadsRef.current = threads
+  const selectionRef = useRef<SelectionState>(selection)
+  selectionRef.current = selection
   const activeThreadIdRef = useRef<string | null>(activeThreadId)
   activeThreadIdRef.current = activeThreadId
 
@@ -307,16 +309,13 @@ export default function Viewer({ fileId }: Props) {
         const height = cardEl?.offsetHeight ?? 80
         return { threadId: thread.threadId, idealTop, height }
       })
-      .sort((a, b) => a.idealTop - b.idealTop)
-
-    const positions = new Map<string, number>()
-    let nextAvailable = 0
-
-    for (const { threadId, idealTop, height } of entries) {
-      const top = Math.max(idealTop, nextAvailable)
-      positions.set(threadId, top)
-      nextAvailable = top + height + CARD_GAP
-    }
+    const draftCard = selectionRef.current?.kind === 'composing'
+      ? {
+        top: selectionRef.current.cardY,
+        height: composingCardRef.current?.offsetHeight ?? 160,
+      }
+      : undefined
+    const positions = computeThreadCardPositions(entries, draftCard)
 
     setCardPositions(positions)
   }, []) // stable: reads from refs only
@@ -422,6 +421,10 @@ export default function Viewer({ fileId }: Props) {
   useLayoutEffect(() => {
     computePositions()
   }, [activeThreadId, computePositions])
+
+  useLayoutEffect(() => {
+    computePositions()
+  }, [selection, commentText, computePositions])
 
   // Clear reply + message-edit state when the active thread changes
   useEffect(() => {
@@ -1043,6 +1046,7 @@ export default function Viewer({ fileId }: Props) {
 
       {selection.kind === 'composing' && (
         <div
+          ref={composingCardRef}
           style={{
             ...styles.commentCard,
             top: selection.cardY,
