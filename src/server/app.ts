@@ -17,9 +17,11 @@ app.get('/api/files/:fileId/content', (c) => {
 })
 
 
-app.use('/*', serveStatic({ root: './dist/client' }))
+if (process.env.NODE_ENV !== 'development') {
+  app.use('/*', serveStatic({ root: './dist/client' }))
 
-app.get('*', (c) => {
-  const html = readFileSync(join(process.cwd(), 'dist/client/index.html'), 'utf-8')
-  return c.html(html)
-})
+  app.get('*', (c) => {
+    const html = readFileSync(join(process.cwd(), 'dist/client/index.html'), 'utf-8')
+    return c.html(html)
+  })
+}
