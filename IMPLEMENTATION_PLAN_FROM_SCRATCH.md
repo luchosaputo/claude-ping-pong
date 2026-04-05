@@ -254,7 +254,7 @@ Verificacion:
 
 ### Etapa 15: Resaltar el texto comentado en el documento
 
-[ ] Al cargar comentarios, re-anclar cada hilo al DOM:
+[X] Al cargar comentarios, re-anclar cada hilo al DOM:
 1. Buscar coincidencia exacta de `selectedText` dentro del rango `data-line-*`
 2. Si falla, buscar coincidencia fuzzy usando `prefixContext` y `suffixContext`
 3. Si falla, marcar el hilo como huerfano (visible solo en panel lateral)
@@ -269,7 +269,7 @@ Verificacion:
 
 ### Etapa 16: Interaccion activa entre highlight y tarjeta
 
-[ ] Click en `<mark>` activa la tarjeta correspondiente (expanded, prominente). Click en tarjeta hace scroll al `<mark>` y lo activa. Las tarjetas inactivas se muestran compactas.
+[X] Click en `<mark>` activa la tarjeta correspondiente (expanded, prominente). Click en tarjeta hace scroll al `<mark>` y lo activa. Las tarjetas inactivas se muestran compactas.
 
 Verificacion:
 - Click en texto resaltado → tarjeta correspondiente se expande y recibe foco.

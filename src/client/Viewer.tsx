@@ -191,6 +191,7 @@ export default function Viewer({ fileId }: Props) {
   const [commentText, setCommentText] = useState('')
   const [threads, setThreads] = useState<Thread[]>([])
   const [cardPositions, setCardPositions] = useState<Map<string, number>>(new Map())
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
 
   const articleRef = useRef<HTMLElement>(null)
   const asideRef = useRef<HTMLElement>(null)
@@ -299,6 +300,53 @@ export default function Viewer({ fileId }: Props) {
       if (posRafRef.current !== null) cancelAnimationFrame(posRafRef.current)
     }
   }, [computePositions])
+
+  // ── Active thread interaction ─────────────────────────────────────────────
+
+  // Delegated click on <mark> elements (marks are created imperatively, so per-element listeners would leak)
+  useEffect(() => {
+    const article = articleRef.current
+    if (!article || state.status !== 'ready') return
+
+    function handleMarkClick(e: MouseEvent) {
+      const mark = (e.target as Element).closest<HTMLElement>('mark[data-thread-id]')
+      if (!mark) return
+      e.stopPropagation()
+      const threadId = mark.dataset.threadId!
+      setActiveThreadId((prev) => (prev === threadId ? null : threadId))
+    }
+
+    article.addEventListener('click', handleMarkClick)
+    return () => article.removeEventListener('click', handleMarkClick)
+  }, [state.status])
+
+  // Deactivate when clicking anywhere outside a card or mark
+  useEffect(() => {
+    function handleDocumentClick() {
+      setActiveThreadId(null)
+    }
+    document.addEventListener('click', handleDocumentClick)
+    return () => document.removeEventListener('click', handleDocumentClick)
+  }, [])
+
+  // Sync .mark-active CSS class after active thread changes or marks are re-created
+  useLayoutEffect(() => {
+    const article = articleRef.current
+    if (!article) return
+    article.querySelectorAll<HTMLElement>('mark[data-thread-id].mark-active').forEach((el) =>
+      el.classList.remove('mark-active')
+    )
+    if (activeThreadId) {
+      article
+        .querySelector<HTMLElement>(`mark[data-thread-id="${activeThreadId}"]`)
+        ?.classList.add('mark-active')
+    }
+  }, [activeThreadId, threads])
+
+  // Recompute card positions when active card expands/collapses (height changes)
+  useLayoutEffect(() => {
+    computePositions()
+  }, [activeThreadId, computePositions])
 
   // ── Selection handling ────────────────────────────────────────────────────
 
@@ -445,6 +493,19 @@ export default function Viewer({ fileId }: Props) {
       {/* Existing thread cards */}
       {threads.map((thread) => {
         const top = cardPositions.get(thread.threadId) ?? 0
+        const isActive = thread.threadId === activeThreadId
+
+        function handleCardClick(e: React.MouseEvent) {
+          e.stopPropagation()
+          setActiveThreadId(thread.threadId)
+          if (!isActive) {
+            const mark = articleRef.current?.querySelector<HTMLElement>(
+              `mark[data-thread-id="${thread.threadId}"]`
+            )
+            mark?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }
+
         return (
           <div
             key={thread.threadId}
@@ -452,8 +513,10 @@ export default function Viewer({ fileId }: Props) {
               if (el) cardEls.current.set(thread.threadId, el)
               else cardEls.current.delete(thread.threadId)
             }}
+            onClick={handleCardClick}
             style={{
               ...styles.threadCard,
+              ...(isActive ? styles.threadCardActive : {}),
               top,
               left: asideOffsetLeft,
               visibility: cardPositions.size === 0 ? 'hidden' : 'visible',
@@ -615,6 +678,11 @@ const styles = {
     zIndex: 50,
     fontFamily: 'Roboto, Arial, sans-serif',
     transition: 'top 0.15s ease',
+    cursor: 'pointer',
+  },
+  threadCardActive: {
+    zIndex: 60,
+    cursor: 'default',
   },
   messageList: {
     display: 'flex',
