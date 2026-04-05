@@ -223,7 +223,7 @@ Verificacion:
 
 ### Etapa 12: Endpoint para crear un comentario (hilo raiz)
 
-[ ] `POST /api/threads` que valida el payload y crea una fila en `threads` + el primer mensaje en `messages` con `author: 'user'`.
+[X] `POST /api/threads` que valida el payload y crea una fila en `threads` + el primer mensaje en `messages` con `author: 'user'`.
 
 Verificacion:
 - POST valido → hilo creado, respuesta con thread-id.
@@ -232,12 +232,23 @@ Verificacion:
 
 ### Etapa 13: Conectar el popup con el backend
 
-[ ] Guardar desde la interfaz llama al endpoint real. Confirmar persistencia.
+[X] Guardar desde la interfaz llama al endpoint real. Confirmar persistencia.
 
 Verificacion:
 - Crear comentario desde el navegador.
 - Backend persiste el hilo.
 - Recargar la pagina → comentario sigue presente.
+
+### Etapa 13.1: Cargar comentarios del backend
+
+[ ] Endpoint `GET /api/threads?fileId=...` que devuelve todos los hilos para un archivo.
+
+Renderizar las tarjetas de comentarios en el panel lateral.
+
+Verificacion:
+- Llamar al endpoint con fileId valido → devuelve hilos.
+- Llamar con fileId invalido → 404 controlado.
+- Recargar la pagina → comentarios aparecen.
 
 ### Etapa 14: Resaltar el texto comentado en el documento
 

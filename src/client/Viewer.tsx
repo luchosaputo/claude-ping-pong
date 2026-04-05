@@ -23,6 +23,8 @@ type SelectionState =
     suffixContext: string
     lineRangeStart: number
     lineRangeEnd: number
+    saving?: boolean
+    saveError?: string
   }
 
 function findBlockAncestor(node: Node, root: Element): Element | null {
@@ -156,7 +158,7 @@ export default function Viewer({ fileId }: Props) {
   }
 
   async function handleSave() {
-    if (selection.kind !== 'composing') return
+    if (selection.kind !== 'composing' || selection.saving) return
     const payload = {
       fileId,
       selectedText: selection.selectedText,
@@ -166,8 +168,7 @@ export default function Viewer({ fileId }: Props) {
       lineRangeEnd: selection.lineRangeEnd,
       body: commentText,
     }
-    setSelection({ kind: 'none' })
-    setCommentText('')
+    setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: true, saveError: undefined } : prev)
     try {
       const res = await fetch('/api/threads', {
         method: 'POST',
@@ -176,10 +177,13 @@ export default function Viewer({ fileId }: Props) {
       })
       if (!res.ok) {
         const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
-        console.error('[ping-pong] failed to save comment:', err.error)
+        setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: false, saveError: err.error } : prev)
+        return
       }
+      setSelection({ kind: 'none' })
+      setCommentText('')
     } catch (err) {
-      console.error('[ping-pong] network error saving comment:', err)
+      setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: false, saveError: 'Error de red al guardar.' } : prev)
     }
   }
 
@@ -265,25 +269,30 @@ export default function Viewer({ fileId }: Props) {
             />
           </div>
 
+          {selection.saveError && (
+            <div style={styles.saveError}>{selection.saveError}</div>
+          )}
+
           <div style={styles.actions}>
             <button
               style={styles.cancelBtn}
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleCancel}
+              disabled={selection.saving}
             >
               Cancelar
             </button>
             <button
               style={{
                 ...styles.saveBtn,
-                opacity: commentText.trim() ? 1 : 0.5,
-                cursor: commentText.trim() ? 'pointer' : 'default',
+                opacity: (commentText.trim() && !selection.saving) ? 1 : 0.5,
+                cursor: (commentText.trim() && !selection.saving) ? 'pointer' : 'default',
               }}
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleSave}
-              disabled={!commentText.trim()}
+              disabled={!commentText.trim() || selection.saving}
             >
-              Comentar
+              {selection.saving ? 'Guardando…' : 'Comentar'}
             </button>
           </div>
         </div>
@@ -389,6 +398,12 @@ const styles = {
     padding: '4px 0',
     borderBottom: '2px solid var(--accent)',
     overflow: 'hidden',
+  },
+  saveError: {
+    fontSize: '12px',
+    color: '#cc2222',
+    marginBottom: '6px',
+    lineHeight: '1.4',
   },
   actions: {
     display: 'flex',
