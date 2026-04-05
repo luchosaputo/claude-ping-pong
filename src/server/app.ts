@@ -107,6 +107,56 @@ app.get('/api/files/:fileId/threads', (c) => {
   return c.json([...map.values()])
 })
 
+app.patch('/api/threads/:threadId', async (c) => {
+  const { threadId } = c.req.param()
+
+  let body: Record<string, unknown>
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const { body: newBody } = body as Record<string, unknown>
+  if (!newBody || typeof newBody !== 'string' || !newBody.trim()) {
+    return c.json({ error: 'body is required' }, 400)
+  }
+
+  const thread = db.prepare<[string], { id: string }>('SELECT id FROM threads WHERE id = ?').get(threadId)
+  if (!thread) return c.json({ error: 'Thread not found' }, 404)
+
+  const agentMsg = db.prepare<[string], { id: string }>(
+    "SELECT id FROM messages WHERE thread_id = ? AND author = 'agent' LIMIT 1"
+  ).get(threadId)
+  if (agentMsg) return c.json({ error: 'Cannot edit a thread that has agent replies' }, 409)
+
+  // Update the root (first) user message
+  db.prepare(
+    "UPDATE messages SET body = ? WHERE thread_id = ? AND author = 'user' ORDER BY created_at ASC LIMIT 1"
+  ).run(newBody.trim(), threadId)
+
+  return c.json({ ok: true })
+})
+
+app.delete('/api/threads/:threadId', (c) => {
+  const { threadId } = c.req.param()
+
+  const thread = db.prepare<[string], { id: string }>('SELECT id FROM threads WHERE id = ?').get(threadId)
+  if (!thread) return c.json({ error: 'Thread not found' }, 404)
+
+  const agentMsg = db.prepare<[string], { id: string }>(
+    "SELECT id FROM messages WHERE thread_id = ? AND author = 'agent' LIMIT 1"
+  ).get(threadId)
+  if (agentMsg) return c.json({ error: 'Cannot delete a thread that has agent replies' }, 409)
+
+  db.transaction(() => {
+    db.prepare('DELETE FROM messages WHERE thread_id = ?').run(threadId)
+    db.prepare('DELETE FROM threads WHERE id = ?').run(threadId)
+  })()
+
+  return c.json({ ok: true })
+})
+
 app.get('/api/files/:fileId/content', (c) => {
   const { fileId } = c.req.param()
   const row = db.prepare<[string], { path: string }>('SELECT path FROM files WHERE id = ?').get(fileId)

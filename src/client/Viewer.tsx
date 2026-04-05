@@ -192,6 +192,10 @@ export default function Viewer({ fileId }: Props) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [cardPositions, setCardPositions] = useState<Map<string, number>>(new Map())
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
+  const [editText, setEditText] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState<string | null>(null)
 
   const articleRef = useRef<HTMLElement>(null)
   const asideRef = useRef<HTMLElement>(null)
@@ -465,6 +469,61 @@ export default function Viewer({ fileId }: Props) {
     }
   }
 
+  function handleStartEdit(thread: Thread) {
+    const rootMsg = thread.messages.find((m) => m.author === 'user')
+    if (!rootMsg) return
+    setEditingThreadId(thread.threadId)
+    setEditText(rootMsg.body)
+    setEditError(null)
+  }
+
+  function handleEditCancel() {
+    setEditingThreadId(null)
+    setEditText('')
+    setEditError(null)
+  }
+
+  async function handleEditSave(threadId: string) {
+    if (!editText.trim() || editSaving) return
+    setEditSaving(true)
+    setEditError(null)
+    try {
+      const res = await fetch(`/api/threads/${threadId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: editText }),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        setEditError(err.error)
+        return
+      }
+      setEditingThreadId(null)
+      setEditText('')
+      loadThreads()
+    } catch {
+      setEditError('Error de red al guardar.')
+    } finally {
+      setEditSaving(false)
+    }
+  }
+
+  async function handleDelete(threadId: string) {
+    if (!confirm('¿Borrar este comentario?')) return
+    try {
+      const res = await fetch(`/api/threads/${threadId}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        alert(err.error)
+        return
+      }
+      if (activeThreadId === threadId) setActiveThreadId(null)
+      loadThreads()
+    } catch {
+      alert('Error de red al borrar.')
+    }
+  }
+
   function handleTextareaKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
     if (e.key === 'Escape') {
       handleCancel()
@@ -506,6 +565,9 @@ export default function Viewer({ fileId }: Props) {
           }
         }
 
+        const hasAgentReply = thread.messages.some((m) => m.author === 'agent')
+        const isEditing = editingThreadId === thread.threadId
+
         return (
           <div
             key={thread.threadId}
@@ -522,30 +584,100 @@ export default function Viewer({ fileId }: Props) {
               visibility: cardPositions.size === 0 ? 'hidden' : 'visible',
             }}
           >
-            <div style={styles.quotedText}>
-              "{thread.selectedText.length > 80
-                ? thread.selectedText.slice(0, 80) + '…'
-                : thread.selectedText}"
+            <div style={styles.quotedTextRow}>
+              <div style={styles.quotedText}>
+                "{thread.selectedText.length > 80
+                  ? thread.selectedText.slice(0, 80) + '…'
+                  : thread.selectedText}"
+              </div>
+              {isActive && !hasAgentReply && !isEditing && (
+                <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
+                  <button
+                    style={styles.iconBtn}
+                    title="Editar comentario"
+                    onClick={() => handleStartEdit(thread)}
+                  >
+                    {/* pencil */}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                      <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </svg>
+                  </button>
+                  <button
+                    style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
+                    title="Borrar comentario"
+                    onClick={() => handleDelete(thread.threadId)}
+                  >
+                    {/* trash */}
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                      <path d="M10 11v6"/>
+                      <path d="M14 11v6"/>
+                      <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                    </svg>
+                  </button>
+                </div>
+              )}
             </div>
             <div style={styles.messageList}>
-              {thread.messages.map((msg, i) => (
-                <div
-                  key={msg.id}
-                  style={{
-                    ...styles.message_,
-                    ...(i > 0 ? styles.messageSeparated : {}),
-                  }}
-                >
-                  <span style={{
-                    ...styles.authorLabel,
-                    ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
-                  }}>
-                    {msg.author === 'agent' ? 'Agent' : 'You'}
-                  </span>
-                  <p style={styles.messageBody}>{msg.body}</p>
-                </div>
-              ))}
+              {thread.messages
+                .filter((msg, i) => !(isEditing && i === 0 && msg.author === 'user'))
+                .map((msg, i) => (
+                  <div
+                    key={msg.id}
+                    style={{
+                      ...styles.message_,
+                      ...(i > 0 ? styles.messageSeparated : {}),
+                    }}
+                  >
+                    <span style={{
+                      ...styles.authorLabel,
+                      ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
+                    }}>
+                      {msg.author === 'agent' ? 'Agent' : 'You'}
+                    </span>
+                    <p style={styles.messageBody}>{msg.body}</p>
+                  </div>
+                ))}
             </div>
+
+            {isActive && isEditing && (
+              <div style={styles.editArea} onClick={(e) => e.stopPropagation()}>
+                <textarea
+                  style={styles.editTextarea}
+                  value={editText}
+                  onChange={(e) => {
+                    setEditText(e.target.value)
+                    e.target.style.height = 'auto'
+                    e.target.style.height = e.target.scrollHeight + 'px'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Escape') handleEditCancel()
+                    else if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && editText.trim()) handleEditSave(thread.threadId)
+                  }}
+                  autoFocus
+                  rows={2}
+                />
+                {editError && <div style={styles.saveError}>{editError}</div>}
+                <div style={styles.actions}>
+                  <button style={styles.cancelBtn} onClick={handleEditCancel} disabled={editSaving}>
+                    Cancelar
+                  </button>
+                  <button
+                    style={{
+                      ...styles.saveBtn,
+                      opacity: (editText.trim() && !editSaving) ? 1 : 0.5,
+                      cursor: (editText.trim() && !editSaving) ? 'pointer' : 'default',
+                    }}
+                    onClick={() => handleEditSave(thread.threadId)}
+                    disabled={!editText.trim() || editSaving}
+                  >
+                    {editSaving ? 'Guardando…' : 'Guardar'}
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )
       })}
@@ -587,7 +719,7 @@ export default function Viewer({ fileId }: Props) {
             left: asideOffsetLeft,
           }}
         >
-          <div style={styles.quotedText}>
+          <div style={{ ...styles.quotedText, marginBottom: '10px' }}>
             "{selection.selectedText.length > 80
               ? selection.selectedText.slice(0, 80) + '…'
               : selection.selectedText}"
@@ -766,12 +898,12 @@ const styles = {
     fontFamily: 'Roboto, Arial, sans-serif',
   },
   quotedText: {
+    flex: 1,
     fontSize: '12px',
     color: 'var(--muted)',
     fontStyle: 'italic' as const,
     borderLeft: '3px solid var(--quote-border)',
     paddingLeft: '8px',
-    marginBottom: '10px',
     lineHeight: '1.5',
   },
   inputRow: {
@@ -825,5 +957,51 @@ const styles = {
     padding: '6px 16px',
     borderRadius: '4px',
     userSelect: 'none' as const,
+  },
+  quotedTextRow: {
+    display: 'flex',
+    alignItems: 'flex-start',
+    gap: '4px',
+    marginBottom: '10px',
+  },
+  quoteIcons: {
+    display: 'flex',
+    flexShrink: 0,
+    gap: '2px',
+    marginTop: '1px',
+  },
+  iconBtn: {
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: 'var(--muted)',
+    padding: '2px',
+    borderRadius: '3px',
+    lineHeight: 0,
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconBtnDanger: {
+    color: '#cc2222',
+  },
+  editArea: {
+    marginTop: '10px',
+    paddingTop: '8px',
+    borderTop: '1px solid var(--card-border)',
+  },
+  editTextarea: {
+    width: '100%',
+    border: 'none',
+    outline: 'none',
+    resize: 'none' as const,
+    fontFamily: 'Roboto, Arial, sans-serif',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    color: 'var(--text)',
+    background: 'transparent',
+    padding: '4px 0',
+    borderBottom: '2px solid var(--accent)',
+    overflow: 'hidden',
   },
 } as const
