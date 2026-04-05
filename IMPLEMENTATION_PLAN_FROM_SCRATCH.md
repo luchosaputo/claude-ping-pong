@@ -170,7 +170,7 @@ Verificacion:
 
 ### Etapa 7: Renderizar Markdown como HTML con metadatos de bloque
 
-[ ] Transformar el Markdown en HTML usando `marked` o `markdown-it` con un renderer personalizado que agregue `data-line-start` y `data-line-end` en cada bloque (parrafos, titulos, listas, code blocks).
+[X] Transformar el Markdown en HTML usando `marked` o `markdown-it` con un renderer personalizado que agregue `data-line-start` y `data-line-end` en cada bloque (parrafos, titulos, listas, code blocks).
 
 Verificacion:
 - Inspeccionar el HTML generado y confirmar que los bloques tienen los atributos `data-line-*`.
@@ -179,7 +179,7 @@ Verificacion:
 
 ### Etapa 8: Construir la pagina viewer
 
-[ ] Pagina de viewer en el frontend con layout base: area de documento (con margen derecho para las tarjetas de comentarios) y estructura fija.
+[X] Pagina de viewer en el frontend con layout base: area de documento (con margen derecho para las tarjetas de comentarios) y estructura fija.
 
 Verificacion:
 - Abrir el viewer de un archivo.
@@ -192,7 +192,7 @@ Verificacion:
 
 ### Etapa 9: Detectar seleccion de texto dentro del documento
 
-[ ] Escuchar `mouseup` en el area del documento. Verificar que la seleccion este contenida dentro de un unico bloque con `data-line-*`. Si la seleccion cruza bloques, mostrar tooltip: "Los comentarios deben estar dentro de un mismo parrafo."
+[X] Escuchar `mouseup` en el area del documento. Verificar que la seleccion este contenida dentro de un unico bloque con `data-line-*`. Si la seleccion cruza bloques, mostrar tooltip: "Los comentarios deben estar dentro de un mismo parrafo."
 
 Verificacion:
 - Seleccionar texto dentro de un bloque → seleccion detectada.
