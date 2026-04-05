@@ -356,12 +356,12 @@ export default function Viewer({ fileId }: Props) {
 
     eventSource.addEventListener('ping', handlePing as EventListener)
     eventSource.addEventListener('thread:updated', handleThreadUpdated as EventListener)
-    eventSource.addEventListener('file:changed', handleFileChanged as EventListener)
+    eventSource.addEventListener('file:changed', handleFileChanged as unknown as EventListener)
 
     return () => {
       eventSource.removeEventListener('ping', handlePing as EventListener)
       eventSource.removeEventListener('thread:updated', handleThreadUpdated as EventListener)
-      eventSource.removeEventListener('file:changed', handleFileChanged as EventListener)
+      eventSource.removeEventListener('file:changed', handleFileChanged as unknown as EventListener)
       eventSource.close()
     }
   }, [fileId, loadContent])
