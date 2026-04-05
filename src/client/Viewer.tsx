@@ -237,6 +237,21 @@ export default function Viewer({ fileId }: Props) {
     if (state.status === 'ready') loadThreads()
   }, [state.status])
 
+  useEffect(() => {
+    const eventSource = new EventSource(`/api/events/${fileId}`)
+
+    function handlePing(_event: MessageEvent<string>) {
+      // Keep the SSE channel exercised now; later stages will react to server-side events here.
+    }
+
+    eventSource.addEventListener('ping', handlePing as EventListener)
+
+    return () => {
+      eventSource.removeEventListener('ping', handlePing as EventListener)
+      eventSource.close()
+    }
+  }, [fileId])
+
   // ── Position algorithm ────────────────────────────────────────────────────
 
   const computePositions = useCallback(() => {

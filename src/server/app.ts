@@ -5,9 +5,101 @@ import { join } from 'path'
 import { nanoid } from 'nanoid'
 import { PORT, DATA_DIR } from '../config.js'
 import { db } from '../db.js'
+
 export const app = new Hono()
 
+type SseConnection = {
+  close: () => void
+  send: (event: string, data: unknown) => void
+}
+
+const sseConnectionsByFileId = new Map<string, Set<SseConnection>>()
+
+function formatSseEvent(event: string, data: unknown): string {
+  return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
+}
+
+function registerSseConnection(fileId: string, connection: SseConnection): () => void {
+  const connections = sseConnectionsByFileId.get(fileId) ?? new Set<SseConnection>()
+  connections.add(connection)
+  sseConnectionsByFileId.set(fileId, connections)
+
+  return () => {
+    const current = sseConnectionsByFileId.get(fileId)
+    if (!current) return
+    current.delete(connection)
+    if (current.size === 0) sseConnectionsByFileId.delete(fileId)
+  }
+}
+
+export function emitFileEvent(fileId: string, event: string, data: unknown): void {
+  const connections = sseConnectionsByFileId.get(fileId)
+  if (!connections) return
+
+  for (const connection of connections) {
+    connection.send(event, data)
+  }
+}
+
 app.get('/health', (c) => c.json({ status: 'ok' }))
+
+app.get('/api/events/:fileId', (c) => {
+  const { fileId } = c.req.param()
+  const file = db.prepare<[string], { id: string }>('SELECT id FROM files WHERE id = ?').get(fileId)
+  if (!file) return c.json({ error: 'File not found' }, 404)
+
+  const encoder = new TextEncoder()
+
+  let controller: ReadableStreamDefaultController<Uint8Array> | null = null
+  let closed = false
+  let unregister = () => {}
+
+  const stream = new ReadableStream<Uint8Array>({
+    start(ctrl) {
+      controller = ctrl
+
+      const connection: SseConnection = {
+        close() {
+          if (closed) return
+          closed = true
+          unregister()
+          c.req.raw.signal.removeEventListener('abort', handleAbort)
+          controller?.close()
+        },
+        send(event, data) {
+          if (closed) return
+          controller?.enqueue(encoder.encode(formatSseEvent(event, data)))
+        },
+      }
+
+      function handleAbort() {
+        connection.close()
+      }
+
+      unregister = registerSseConnection(fileId, connection)
+      c.req.raw.signal.addEventListener('abort', handleAbort, { once: true })
+
+      connection.send('ping', {
+        fileId,
+        ok: true,
+        timestamp: Date.now(),
+      })
+    },
+    cancel() {
+      if (closed) return
+      closed = true
+      unregister()
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+      'Content-Type': 'text/event-stream',
+    },
+  })
+})
 
 app.post('/api/threads', async (c) => {
   let body: Record<string, unknown>

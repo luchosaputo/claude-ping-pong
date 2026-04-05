@@ -45,6 +45,38 @@ beforeEach(() => {
   mockNanoid.mockReturnValue('mock-id')
 })
 
+describe('GET /api/events/:fileId', () => {
+  it('returns 404 when file does not exist', async () => {
+    getMock.mockReturnValue(null)
+
+    const res = await app.request('/api/events/missing-file')
+
+    expect(res.status).toBe(404)
+    const data = await res.json() as { error: string }
+    expect(data.error).toMatch(/not found/i)
+  })
+
+  it('opens an SSE stream and sends an initial ping event', async () => {
+    getMock.mockReturnValue({ id: 'file-123' })
+
+    const res = await app.request('/api/events/file-123')
+
+    expect(res.status).toBe(200)
+    expect(res.headers.get('content-type')).toContain('text/event-stream')
+
+    const reader = res.body?.getReader()
+    expect(reader).toBeTruthy()
+
+    const firstChunk = await reader!.read()
+    const payload = new TextDecoder().decode(firstChunk.value)
+
+    expect(payload).toContain('event: ping')
+    expect(payload).toContain('"fileId":"file-123"')
+
+    await reader!.cancel()
+  })
+})
+
 describe('POST /api/threads/:threadId/messages', () => {
   function replyRequest(threadId: string, body: unknown) {
     return app.request(`/api/threads/${threadId}/messages`, {

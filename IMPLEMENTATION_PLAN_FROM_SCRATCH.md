@@ -381,7 +381,7 @@ Verificacion:
 
 ### Etapa 25: Implementar canal SSE
 
-[ ] Endpoint `GET /api/events/:fileId` que mantiene una conexion SSE abierta. El servidor mantiene un registro de conexiones activas por fileId.
+[X] Endpoint `GET /api/events/:fileId` que mantiene una conexion SSE abierta. El servidor mantiene un registro de conexiones activas por fileId.
 
 Verificacion:
 - Abrir el viewer y confirmar que la conexion SSE se establece.
