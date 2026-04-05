@@ -883,7 +883,7 @@ export default function Viewer({ fileId }: Props) {
               )}
               {!isActive && !hasUnread && thread.messages.length > 1 && (
                 <div style={styles.replyCountBadge}>
-                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
                   </svg>
                   {thread.messages.length - 1}
@@ -901,7 +901,7 @@ export default function Viewer({ fileId }: Props) {
                     title="Resolve thread"
                     onClick={() => handleResolve(thread.threadId)}
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <polyline points="20 6 9 17 4 12" />
                     </svg>
                   </button>
@@ -913,7 +913,7 @@ export default function Viewer({ fileId }: Props) {
                         onClick={() => handleStartEdit(thread)}
                       >
                         {/* pencil */}
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                         </svg>
@@ -924,7 +924,7 @@ export default function Viewer({ fileId }: Props) {
                         onClick={() => handleDelete(thread.threadId)}
                       >
                         {/* trash */}
-                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <polyline points="3 6 5 6 21 6" />
                           <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                           <path d="M10 11v6" />
@@ -1005,7 +1005,7 @@ export default function Viewer({ fileId }: Props) {
                               ...(msg.author === 'agent' ? styles.avatarAgent : styles.avatarUser)
                             }}>
                               {msg.author === 'agent' ? (
-                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor">
                                   <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z" />
                                 </svg>
                               ) : 'U'}
@@ -1026,7 +1026,7 @@ export default function Viewer({ fileId }: Props) {
                                       onClick={() => handleStartMessageEdit(msg)}
                                     >
                                       {/* pencil */}
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
                                         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                                       </svg>
@@ -1037,7 +1037,7 @@ export default function Viewer({ fileId }: Props) {
                                       onClick={() => handleMessageDelete(msg.id)}
                                     >
                                       {/* trash */}
-                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                      <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                                         <polyline points="3 6 5 6 21 6" />
                                         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
                                         <path d="M10 11v6" />
@@ -1154,7 +1154,7 @@ export default function Viewer({ fileId }: Props) {
           onMouseDown={(e) => e.preventDefault()}
           onClick={handleAddCommentClick}
         >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
           </svg>
         </button>
@@ -1240,35 +1240,35 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-start',
     minHeight: '100vh',
-    padding: '48px 24px',
+    padding: '72px 56px',
     boxSizing: 'border-box' as const,
-    gap: '24px',
+    gap: '48px',
     position: 'relative' as const,
   },
   document: {
-    flex: '0 1 860px',
+    flex: '1 1 600px',
     minWidth: 0,
     fontFamily: 'Georgia, serif',
-    fontSize: '16px',
-    lineHeight: '1.7',
+    fontSize: '22px',
+    lineHeight: '1.8',
     color: 'var(--text)',
   },
   sidebar: {
-    flex: '0 0 240px',
+    flex: '0 0 420px',
   },
   message: {
-    padding: '48px 24px',
+    padding: '72px 56px',
     color: 'var(--muted)',
     fontFamily: 'sans-serif',
   },
   threadCard: {
     position: 'absolute' as const,
-    width: '260px',
+    width: '420px',
     background: 'var(--card-bg)',
     border: '1px solid var(--card-border)',
-    borderRadius: '8px',
+    borderRadius: '10px',
     boxShadow: '0 2px 8px var(--card-shadow)',
-    padding: '12px',
+    padding: '20px',
     zIndex: 50,
     fontFamily: 'Roboto, Arial, sans-serif',
     transition: 'top 0.15s ease',
@@ -1288,21 +1288,21 @@ const styles = {
     gap: '0',
   },
   message_: {
-    paddingTop: '4px',
+    paddingTop: '6px',
   },
   messageSeparated: {
     borderTop: '1px solid var(--card-border)',
-    paddingTop: '8px',
-    marginTop: '8px',
+    paddingTop: '12px',
+    marginTop: '12px',
   },
   avatar: {
-    width: '24px',
-    height: '24px',
-    borderRadius: '12px',
+    width: '30px',
+    height: '30px',
+    borderRadius: '15px',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
-    fontSize: '12px',
+    fontSize: '14px',
     fontWeight: 'bold' as const,
     flexShrink: 0,
     marginTop: '2px',
@@ -1323,17 +1323,17 @@ const styles = {
   },
   bubbleAgent: {
     backgroundColor: 'var(--agent-bg)',
-    padding: '8px 10px',
+    padding: '10px 12px',
     borderRadius: '4px 8px 8px 4px',
     borderLeft: '3px solid var(--agent-accent)',
     marginTop: '-4px', // offset default padding
   },
   authorLabel: {
     display: 'inline-block',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: '700' as const,
     letterSpacing: '0.02em',
-    marginBottom: '2px',
+    marginBottom: '3px',
     textTransform: 'uppercase' as const,
   },
   authorUser: {
@@ -1344,8 +1344,8 @@ const styles = {
   },
   messageBody: {
     margin: '0',
-    fontSize: '13px',
-    lineHeight: '1.5',
+    fontSize: '16px',
+    lineHeight: '1.6',
     color: 'var(--text)',
     whiteSpace: 'pre-wrap' as const,
     wordBreak: 'break-word' as const,
@@ -1356,10 +1356,10 @@ const styles = {
     marginLeft: '8px',
     background: 'var(--accent)',
     color: 'var(--accent-btn-text, #fff)',
-    fontSize: '12px',
+    fontSize: '14px',
     fontFamily: 'sans-serif',
     fontWeight: '600' as const,
-    padding: '5px 7px',
+    padding: '6px 9px',
     lineHeight: '0',
     display: 'inline-flex',
     alignItems: 'center',
@@ -1377,8 +1377,8 @@ const styles = {
     transform: 'translateX(-50%)',
     background: '#cc2222',
     color: '#fff',
-    fontSize: '13px',
-    padding: '6px 12px',
+    fontSize: '15px',
+    padding: '8px 16px',
     borderRadius: '6px',
     whiteSpace: 'nowrap' as const,
     pointerEvents: 'none' as const,
@@ -1387,12 +1387,12 @@ const styles = {
   },
   commentCard: {
     position: 'absolute' as const,
-    width: '260px',
+    width: '420px',
     background: 'var(--card-bg)',
     border: '1px solid var(--card-border)',
-    borderRadius: '8px',
+    borderRadius: '10px',
     boxShadow: '0 4px 16px var(--card-shadow)',
-    padding: '12px',
+    padding: '20px',
     zIndex: 200,
     fontFamily: 'Roboto, Arial, sans-serif',
   },
@@ -1400,36 +1400,36 @@ const styles = {
     flex: 1,
     minWidth: 0,
     wordBreak: 'break-word' as const,
-    fontSize: '12px',
+    fontSize: '15px',
     color: 'var(--muted)',
     fontStyle: 'italic' as const,
     borderLeft: '3px solid var(--quote-border)',
-    paddingLeft: '8px',
+    paddingLeft: '10px',
     lineHeight: '1.5',
   },
   orphanBadge: {
     flexShrink: 0,
     marginLeft: '8px',
-    padding: '2px 6px',
+    padding: '3px 8px',
     borderRadius: '999px',
     background: 'var(--agent-bg)',
     color: 'var(--agent-accent)',
-    fontSize: '10px',
+    fontSize: '12px',
     fontWeight: '700' as const,
     letterSpacing: '0.03em',
     textTransform: 'uppercase' as const,
   },
   orphanHint: {
-    marginBottom: '8px',
-    padding: '8px 10px',
+    marginBottom: '10px',
+    padding: '10px 12px',
     borderRadius: '6px',
     background: 'rgba(179, 110, 0, 0.08)',
     color: '#8a5a00',
-    fontSize: '12px',
+    fontSize: '14px',
     lineHeight: '1.45',
   },
   inputRow: {
-    marginBottom: '8px',
+    marginBottom: '10px',
   },
   textarea: {
     width: '100%',
@@ -1437,7 +1437,7 @@ const styles = {
     outline: 'none',
     resize: 'none' as const,
     fontFamily: 'Roboto, Arial, sans-serif',
-    fontSize: '13px',
+    fontSize: '15px',
     lineHeight: '1.5',
     color: 'var(--text)',
     background: 'transparent',
@@ -1446,26 +1446,26 @@ const styles = {
     overflow: 'hidden',
   },
   saveError: {
-    fontSize: '12px',
+    fontSize: '14px',
     color: '#cc2222',
-    marginBottom: '6px',
+    marginBottom: '8px',
     lineHeight: '1.4',
   },
   actions: {
     display: 'flex',
     justifyContent: 'flex-end',
-    gap: '8px',
-    marginTop: '4px',
+    gap: '10px',
+    marginTop: '6px',
   },
   cancelBtn: {
     background: 'none',
     border: 'none',
     cursor: 'pointer',
     color: 'var(--muted)',
-    fontSize: '13px',
+    fontSize: '15px',
     fontFamily: 'Roboto, Arial, sans-serif',
     fontWeight: '500' as const,
-    padding: '6px 12px',
+    padding: '8px 16px',
     borderRadius: '4px',
     userSelect: 'none' as const,
   },
@@ -1473,10 +1473,10 @@ const styles = {
     background: 'var(--accent)',
     color: 'var(--accent-btn-text, #fff)',
     border: 'none',
-    fontSize: '13px',
+    fontSize: '15px',
     fontFamily: 'Roboto, Arial, sans-serif',
     fontWeight: '500' as const,
-    padding: '6px 16px',
+    padding: '8px 20px',
     borderRadius: '4px',
     userSelect: 'none' as const,
   },
@@ -1484,13 +1484,13 @@ const styles = {
     display: 'flex',
     alignItems: 'flex-start',
     justifyContent: 'space-between',
-    gap: '8px',
-    marginBottom: '10px',
+    gap: '10px',
+    marginBottom: '14px',
   },
   quoteIcons: {
     display: 'flex',
     flexShrink: 0,
-    gap: '2px',
+    gap: '4px',
     marginTop: '1px',
   },
   newBadge: {
@@ -1499,18 +1499,18 @@ const styles = {
     gap: '6px',
     flexShrink: 0,
     marginTop: '1px',
-    padding: '2px 8px',
+    padding: '3px 10px',
     borderRadius: '999px',
     background: 'rgba(34, 102, 221, 0.1)',
     color: 'var(--accent)',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: '700' as const,
     letterSpacing: '0.02em',
     textTransform: 'uppercase' as const,
   },
   newDot: {
-    width: '7px',
-    height: '7px',
+    width: '8px',
+    height: '8px',
     borderRadius: '50%',
     background: 'var(--accent)',
     boxShadow: '0 0 0 3px rgba(34, 102, 221, 0.14)',
@@ -1518,14 +1518,14 @@ const styles = {
   replyCountBadge: {
     display: 'inline-flex',
     alignItems: 'center',
-    gap: '4px',
+    gap: '5px',
     flexShrink: 0,
     marginTop: '1px',
-    padding: '2px 7px',
+    padding: '3px 9px',
     borderRadius: '999px',
     background: 'rgba(0,0,0,0.05)',
     color: 'var(--muted)',
-    fontSize: '11px',
+    fontSize: '13px',
     fontWeight: '600' as const,
   },
   iconBtn: {
@@ -1533,7 +1533,7 @@ const styles = {
     border: 'none',
     cursor: 'pointer',
     color: 'var(--muted)',
-    padding: '2px',
+    padding: '4px',
     borderRadius: '3px',
     lineHeight: 0,
     display: 'inline-flex',
@@ -1544,27 +1544,27 @@ const styles = {
     color: '#cc2222',
   },
   replyArea: {
-    marginTop: '10px',
+    marginTop: '14px',
   },
   replyTextarea: {
     width: '100%',
     border: '1px solid var(--card-border)',
-    borderRadius: '20px',
+    borderRadius: '24px',
     outline: 'none',
     resize: 'none' as const,
     fontFamily: 'Roboto, Arial, sans-serif',
-    fontSize: '13px',
+    fontSize: '15px',
     lineHeight: '1.5',
     color: 'var(--text)',
     background: 'transparent',
-    padding: '7px 14px',
+    padding: '9px 18px',
     boxSizing: 'border-box' as const,
     overflow: 'hidden',
     display: 'block',
   },
   editArea: {
-    marginTop: '10px',
-    paddingTop: '8px',
+    marginTop: '12px',
+    paddingTop: '10px',
     borderTop: '1px solid var(--card-border)',
   },
   editTextarea: {
@@ -1573,7 +1573,7 @@ const styles = {
     outline: 'none',
     resize: 'none' as const,
     fontFamily: 'Roboto, Arial, sans-serif',
-    fontSize: '13px',
+    fontSize: '15px',
     lineHeight: '1.5',
     color: 'var(--text)',
     background: 'transparent',
