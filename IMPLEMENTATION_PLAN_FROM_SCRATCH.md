@@ -369,7 +369,7 @@ Verificacion:
 
 ### Etapa 24: Implementar `claude-ping-pong resolve`
 
-[ ] Lee directamente de SQLite. Marca `status = 'resolved'` en el hilo indicado.
+[X] Lee directamente de SQLite. Marca `status = 'resolved'` en el hilo indicado.
 
 Verificacion:
 - Resolver un hilo via CLI.
