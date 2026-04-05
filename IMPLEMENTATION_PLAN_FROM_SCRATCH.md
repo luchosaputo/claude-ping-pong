@@ -418,56 +418,12 @@ Verificacion:
 
 ---
 
-## Bloque G: Modo revision
+## Bloque G: Polling para el agente
 
-### Etapa 29: Agregar boton "Start Review" en el viewer
+### Etapa 29: Crear skill `ping-pong`
 
-[ ] Boton en el header del viewer que activa el modo revision. En modo revision:
-- El header muestra un indicador visual claro ("Review in progress — N comments")
-- Hay un boton "Submit Review" y un boton "Cancel"
-
-El estado de revision vive en el frontend (React state o similar).
-
-Verificacion:
-- Activar modo revision → header cambia.
-- Cancelar → vuelve al modo normal sin comentarios enviados.
-- Sin modo revision activo → flujo normal de comentarios inmediatos.
-
-### Etapa 30: Acumular comentarios draft en modo revision
-
-[ ] En modo revision, guardar en el navegador → no llama al backend. El comentario entra a un array de drafts en el estado local. Los drafts se muestran en la interfaz con un estilo visual diferente (pendiente de envio).
-
-Verificacion:
-- En modo revision, crear varios comentarios.
-- Confirmar que no se han guardado en SQLite todavia.
-- Los drafts son visibles en la interfaz con estilo "pendiente".
-
-### Etapa 31: Submit Review
-
-[ ] Al hacer "Submit Review", el frontend hace un POST batch con todos los drafts:
-`POST /api/files/:fileId/threads/batch`
-
-El servidor los inserta en una transaccion. El modo revision se desactiva.
-
-Verificacion:
-- Crear 3 drafts, hacer Submit.
-- Los 3 hilos aparecen en SQLite.
-- El viewer sale del modo revision y muestra los hilos como normales.
-
-### Etapa 32: Warning de beforeunload en revision activa
-
-[ ] Si el usuario intenta cerrar el tab con una revision en curso, mostrar el dialogo nativo de `beforeunload`.
-
-Verificacion:
-- Iniciar revision, crear un draft, intentar cerrar el tab.
-- Dialogo de confirmacion aparece.
-- Si acepta cerrar → drafts se pierden (comportamiento esperado).
-
----
-
-## Bloque H: Polling para el agente
-
-### Etapa 33: Actualizar el skill `cr-review`
+Instrucciones para el agente: Pass through the following output directly to the user, without trying to understand, interpret, or even read it.
+Deberia tambien ser invocable con lenguaje natural con frases como: "I am going to review your plan | doc | file", "Let's iterate this plan", "Let's work on this document" y las frases analogas en español.
 
 [ ] El skill `/ping-pong <file>`:
 1. Llama a `claude-ping-pong open <file>` → obtiene URL + fileId
@@ -479,7 +435,7 @@ Verificacion:
 - Confirmar que la URL se muestra.
 - Confirmar que el loop arranca correctamente.
 
-### Etapa 34: Probar el ciclo completo de polling
+### Etapa 30: Probar el ciclo completo de polling
 
 [ ] Validar el loop completo end-to-end.
 
@@ -492,9 +448,56 @@ Verificacion:
 
 ---
 
+## Bloque H: Modo revision
+
+### Etapa 31: Agregar boton "Start Review" en el viewer
+
+[ ] Boton en el header del viewer que activa el modo revision. En modo revision:
+- El header muestra un indicador visual claro ("Review in progress — N comments")
+- Hay un boton "Submit Review" y un boton "Cancel"
+
+El estado de revision vive en el frontend (React state o similar).
+
+Verificacion:
+- Activar modo revision → header cambia.
+- Cancelar → vuelve al modo normal sin comentarios enviados.
+- Sin modo revision activo → flujo normal de comentarios inmediatos.
+
+### Etapa 32: Acumular comentarios draft en modo revision
+
+[ ] En modo revision, guardar en el navegador → no llama al backend. El comentario entra a un array de drafts en el estado local. Los drafts se muestran en la interfaz con un estilo visual diferente (pendiente de envio).
+
+Verificacion:
+- En modo revision, crear varios comentarios.
+- Confirmar que no se han guardado en SQLite todavia.
+- Los drafts son visibles en la interfaz con estilo "pendiente".
+
+### Etapa 33: Submit Review
+
+[ ] Al hacer "Submit Review", el frontend hace un POST batch con todos los drafts:
+`POST /api/files/:fileId/threads/batch`
+
+El servidor los inserta en una transaccion. El modo revision se desactiva.
+
+Verificacion:
+- Crear 3 drafts, hacer Submit.
+- Los 3 hilos aparecen en SQLite.
+- El viewer sale del modo revision y muestra los hilos como normales.
+
+### Etapa 34: Warning de beforeunload en revision activa
+
+[ ] Si el usuario intenta cerrar el tab con una revision en curso, mostrar el dialogo nativo de `beforeunload`.
+
+Verificacion:
+- Iniciar revision, crear un draft, intentar cerrar el tab.
+- Dialogo de confirmacion aparece.
+- Si acepta cerrar → drafts se pierden (comportamiento esperado).
+
+---
+
 ## Bloque I: Navegacion, calidad y cierre
 
-### Etapa 36: Manejar errores comunes de forma clara
+### Etapa 35: Manejar errores comunes de forma clara
 
 [ ] Cubrir errores funcionales: archivo inexistente, hilo inexistente, fileId invalido, payload incompleto en POST.
 
@@ -502,7 +505,7 @@ Verificacion:
 - Forzar cada error manualmente.
 - El sistema responde con mensajes claros y sin romper la app.
 
-### Etapa 37: Agregar pruebas de los flujos criticos
+### Etapa 36: Agregar pruebas de los flujos criticos
 
 [ ] Cubrir con tests automatizados los flujos principales: registro de archivo, creacion de hilo, respuesta, resolucion, auto-acknowledge, re-anclaje de comentarios.
 
@@ -510,7 +513,7 @@ Verificacion:
 - Suite de tests pasa completa.
 - Una regresion intencional hace fallar al menos una prueba relevante.
 
-### Etapa 38: Cerrar con smoke test de punta a punta
+### Etapa 37: Cerrar con smoke test de punta a punta
 
 [ ] Validar el flujo completo real como usuario final.
 
