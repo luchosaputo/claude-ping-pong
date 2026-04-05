@@ -1,4 +1,5 @@
 import { serveStatic } from '@hono/node-server/serve-static'
+import chokidar, { type FSWatcher } from 'chokidar'
 import { Hono } from 'hono'
 import { readFileSync, existsSync } from 'fs'
 import { join } from 'path'
@@ -14,6 +15,7 @@ type SseConnection = {
 }
 
 const sseConnectionsByFileId = new Map<string, Set<SseConnection>>()
+const fileWatchersByFileId = new Map<string, FSWatcher>()
 
 function formatSseEvent(event: string, data: unknown): string {
   return `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`
@@ -41,12 +43,36 @@ export function emitFileEvent(fileId: string, event: string, data: unknown): voi
   }
 }
 
+function ensureFileWatcher(fileId: string, path: string): void {
+  if (fileWatchersByFileId.has(fileId)) return
+
+  const watcher = chokidar.watch(path, {
+    ignoreInitial: true,
+  })
+
+  watcher.on('change', () => {
+    emitFileEvent(fileId, 'file:changed', {
+      fileId,
+      timestamp: Date.now(),
+    })
+  })
+
+  fileWatchersByFileId.set(fileId, watcher)
+}
+
+export async function closeFileWatchersForTests(): Promise<void> {
+  await Promise.all(Array.from(fileWatchersByFileId.values(), (watcher) => watcher.close()))
+  fileWatchersByFileId.clear()
+}
+
 app.get('/health', (c) => c.json({ status: 'ok' }))
 
 app.get('/api/events/:fileId', (c) => {
   const { fileId } = c.req.param()
-  const file = db.prepare<[string], { id: string }>('SELECT id FROM files WHERE id = ?').get(fileId)
+  const file = db.prepare<[string], { id: string; path: string }>('SELECT id, path FROM files WHERE id = ?').get(fileId)
   if (!file) return c.json({ error: 'File not found' }, 404)
+
+  ensureFileWatcher(fileId, file.path)
 
   const encoder = new TextEncoder()
 
@@ -99,6 +125,15 @@ app.get('/api/events/:fileId', (c) => {
       'Content-Type': 'text/event-stream',
     },
   })
+})
+
+app.post('/api/files/:fileId/watch', (c) => {
+  const { fileId } = c.req.param()
+  const file = db.prepare<[string], { id: string; path: string }>('SELECT id, path FROM files WHERE id = ?').get(fileId)
+  if (!file) return c.json({ error: 'File not found' }, 404)
+
+  ensureFileWatcher(fileId, file.path)
+  return c.json({ ok: true })
 })
 
 app.post('/api/events/:fileId/notify', async (c) => {

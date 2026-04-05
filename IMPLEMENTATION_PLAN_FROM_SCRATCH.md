@@ -400,7 +400,7 @@ Verificacion:
 
 ### Etapa 27: Vigilar cambios del archivo con chokidar
 
-[ ] Al registrar un archivo en `open`, el servidor inicia un watcher con chokidar sobre esa ruta. Cuando detecta un cambio, emite un evento SSE `file:changed` a los viewers conectados de ese fileId.
+[X] Al registrar un archivo en `open`, el servidor inicia un watcher con chokidar sobre esa ruta. Cuando detecta un cambio, emite un evento SSE `file:changed` a los viewers conectados de ese fileId.
 
 Verificacion:
 - Abrir el viewer de un archivo.

@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { getMock, runMock } = vi.hoisted(() => ({
+const { getMock, runMock, chokidarWatchMock, watcherOnMock, watcherCloseMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   runMock: vi.fn(),
+  chokidarWatchMock: vi.fn(),
+  watcherOnMock: vi.fn(),
+  watcherCloseMock: vi.fn(),
 }))
 
 vi.mock('nanoid', () => ({
@@ -11,6 +14,12 @@ vi.mock('nanoid', () => ({
 
 vi.mock('@hono/node-server/serve-static', () => ({
   serveStatic: () => (_c: unknown, next: () => Promise<void>) => next(),
+}))
+
+vi.mock('chokidar', () => ({
+  default: {
+    watch: chokidarWatchMock,
+  },
 }))
 
 vi.mock('../../db.js', () => ({
@@ -22,7 +31,7 @@ vi.mock('../../db.js', () => ({
 
 import { nanoid } from 'nanoid'
 import { db } from '../../db.js'
-import { app } from '../app.js'
+import { app, closeFileWatchersForTests } from '../app.js'
 
 const mockPrepare = vi.mocked(db.prepare)
 const mockTransaction = vi.mocked(db.transaction)
@@ -36,13 +45,21 @@ function jsonRequest(body: unknown) {
   })
 }
 
-beforeEach(() => {
+beforeEach(async () => {
+  await closeFileWatchersForTests()
   vi.clearAllMocks()
   getMock.mockReturnValue(null)
   runMock.mockReturnValue(undefined)
   mockPrepare.mockReturnValue({ get: getMock, run: runMock } as unknown as ReturnType<typeof db.prepare>)
   mockTransaction.mockImplementation(((fn: () => void) => () => fn()) as unknown as typeof db.transaction)
   mockNanoid.mockReturnValue('mock-id')
+  watcherCloseMock.mockResolvedValue(undefined)
+  const watcher = {
+    on: watcherOnMock,
+    close: watcherCloseMock,
+  }
+  watcherOnMock.mockImplementation((_event: string, _cb: () => void) => watcher)
+  chokidarWatchMock.mockReturnValue(watcher)
 })
 
 describe('GET /api/events/:fileId', () => {
@@ -57,7 +74,7 @@ describe('GET /api/events/:fileId', () => {
   })
 
   it('opens an SSE stream and sends an initial ping event', async () => {
-    getMock.mockReturnValue({ id: 'file-123' })
+    getMock.mockReturnValue({ id: 'file-123', path: '/tmp/file-123.md' })
 
     const res = await app.request('/api/events/file-123')
 
@@ -77,7 +94,7 @@ describe('GET /api/events/:fileId', () => {
   })
 
   it('broadcasts notify events to active SSE listeners', async () => {
-    getMock.mockReturnValue({ id: 'file-123' })
+    getMock.mockReturnValue({ id: 'file-123', path: '/tmp/file-123.md' })
 
     const sseRes = await app.request('/api/events/file-123')
     const reader = sseRes.body?.getReader()
@@ -100,6 +117,29 @@ describe('GET /api/events/:fileId', () => {
     expect(payload).toContain('event: thread:updated')
     expect(payload).toContain('"threadId":"thread-1"')
     expect(payload).toContain('"type":"reply"')
+
+    await reader!.cancel()
+  })
+
+  it('broadcasts file:changed events when chokidar detects a file change', async () => {
+    getMock.mockReturnValue({ id: 'file-123', path: '/tmp/file-123.md' })
+
+    const sseRes = await app.request('/api/events/file-123')
+    const reader = sseRes.body?.getReader()
+    expect(reader).toBeTruthy()
+
+    await reader!.read()
+
+    const changeHandler = watcherOnMock.mock.calls.find(([event]) => event === 'change')?.[1] as (() => void) | undefined
+    expect(changeHandler).toBeTruthy()
+
+    changeHandler!()
+
+    const changedChunk = await reader!.read()
+    const payload = new TextDecoder().decode(changedChunk.value)
+
+    expect(payload).toContain('event: file:changed')
+    expect(payload).toContain('"fileId":"file-123"')
 
     await reader!.cancel()
   })

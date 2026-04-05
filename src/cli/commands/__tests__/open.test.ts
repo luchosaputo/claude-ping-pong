@@ -91,7 +91,8 @@ describe('open command', () => {
     mockExistsSync.mockReturnValue(true)
     global.fetch = vi.fn()
       .mockRejectedValueOnce(new Error('ECONNREFUSED'))
-      .mockResolvedValue({ ok: true }) as unknown as typeof fetch
+      .mockResolvedValueOnce({ ok: true })
+      .mockResolvedValueOnce({ ok: true }) as unknown as typeof fetch
 
     await runCommand(openCmd, { rawArgs: ['doc.md'] })
 

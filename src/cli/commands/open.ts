@@ -43,6 +43,17 @@ async function ensureServer(): Promise<void> {
   await waitForServer()
 }
 
+async function enableFileWatch(fileId: string): Promise<void> {
+  const res = await fetch(`http://localhost:${PORT}/api/files/${fileId}/watch`, {
+    method: 'POST',
+    signal: AbortSignal.timeout(2000),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Failed to start file watcher for ${fileId}`)
+  }
+}
+
 export default defineCommand({
   meta: { description: 'Register a Markdown file and open it in the viewer' },
   args: {
@@ -78,6 +89,8 @@ export default defineCommand({
         Date.now(),
       )
     }
+
+    await enableFileWatch(fileId)
 
     console.log(JSON.stringify({ fileId, url: `http://localhost:${PORT}/view/${fileId}` }))
   },
