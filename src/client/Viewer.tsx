@@ -54,14 +54,14 @@ const styles = {
     fontFamily: 'Georgia, serif',
     fontSize: '16px',
     lineHeight: '1.7',
-    color: '#1a1a1a',
+    color: 'var(--text)',
   },
   sidebar: {
     flex: '0 0 320px',
   },
   message: {
     padding: '48px 24px',
-    color: '#666',
+    color: 'var(--muted)',
     fontFamily: 'sans-serif',
   },
 } as const
