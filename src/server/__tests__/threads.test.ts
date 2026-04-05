@@ -41,7 +41,7 @@ beforeEach(() => {
   getMock.mockReturnValue(null)
   runMock.mockReturnValue(undefined)
   mockPrepare.mockReturnValue({ get: getMock, run: runMock } as unknown as ReturnType<typeof db.prepare>)
-  mockTransaction.mockImplementation((fn: () => void) => () => fn())
+  mockTransaction.mockImplementation(((fn: () => void) => () => fn()) as unknown as typeof db.transaction)
   mockNanoid.mockReturnValue('mock-id')
 })
 

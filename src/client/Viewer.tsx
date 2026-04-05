@@ -37,6 +37,8 @@ interface Message {
 interface Thread {
   threadId: string
   selectedText: string
+  prefixContext: string | null
+  suffixContext: string | null
   lineRangeStart: number
   lineRangeEnd: number
   messages: Message[]
@@ -73,6 +75,114 @@ function extractSelectionData(sel: Selection, block: Element, cardY: number): Ex
   const lineRangeEnd = parseInt(block.getAttribute('data-line-end') ?? '0', 10)
 
   return { kind: 'composing', cardY, selectedText, prefixContext, suffixContext, lineRangeStart, lineRangeEnd }
+}
+
+// ── Text anchoring helpers ────────────────────────────────────────────────
+
+/**
+ * Convert a character offset within a DOM subtree's textContent to a Range.
+ * Walks text nodes accumulating lengths until the start and end positions are found.
+ */
+function charOffsetToRange(root: Element, startOffset: number, length: number): Range | null {
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+  let pos = 0
+  let startNode: Text | null = null
+  let startNodeOffset = 0
+  let endNode: Text | null = null
+  let endNodeOffset = 0
+
+  let node: Node | null
+  while ((node = walker.nextNode())) {
+    const text = node as Text
+    const len = text.length
+    const nodeEnd = pos + len
+
+    if (startNode === null && nodeEnd > startOffset) {
+      startNode = text
+      startNodeOffset = startOffset - pos
+    }
+    if (startNode !== null && nodeEnd >= startOffset + length) {
+      endNode = text
+      endNodeOffset = startOffset + length - pos
+      break
+    }
+    pos += len
+  }
+
+  if (!startNode || !endNode) return null
+  const range = document.createRange()
+  range.setStart(startNode, startNodeOffset)
+  range.setEnd(endNode, endNodeOffset)
+  return range
+}
+
+/**
+ * Find the Range for selectedText inside a block element.
+ * First tries exact match (using prefix+suffix for disambiguation).
+ * Falls back to a simple indexOf match.
+ * Returns null when the text can no longer be located (orphan).
+ */
+function findTextRange(
+  block: Element,
+  selectedText: string,
+  prefixContext: string | null,
+  suffixContext: string | null,
+): Range | null {
+  const fullText = block.textContent ?? ''
+
+  // Try context-assisted disambiguation first
+  if (prefixContext !== null && suffixContext !== null) {
+    const needle = prefixContext + selectedText + suffixContext
+    const idx = fullText.indexOf(needle)
+    if (idx !== -1) {
+      return charOffsetToRange(block, idx + prefixContext.length, selectedText.length)
+    }
+  }
+
+  // Plain exact match (first occurrence)
+  const idx = fullText.indexOf(selectedText)
+  if (idx !== -1) {
+    return charOffsetToRange(block, idx, selectedText.length)
+  }
+
+  // Normalised whitespace fallback
+  const normalFull = fullText.replace(/\s+/g, ' ')
+  const normalSelected = selectedText.replace(/\s+/g, ' ').trim()
+  if (normalSelected.length > 0) {
+    const normalIdx = normalFull.indexOf(normalSelected)
+    if (normalIdx !== -1) {
+      return charOffsetToRange(block, normalIdx, normalSelected.length)
+    }
+  }
+
+  return null
+}
+
+/** Wrap the given Range in a <mark data-thread-id="…"> element. */
+function wrapRangeWithMark(range: Range, threadId: string): void {
+  const mark = document.createElement('mark')
+  mark.dataset.threadId = threadId
+  try {
+    range.surroundContents(mark)
+  } catch {
+    // Range partially overlaps element boundaries — extract then re-insert
+    const fragment = range.extractContents()
+    mark.appendChild(fragment)
+    range.insertNode(mark)
+  }
+}
+
+/** Remove all mark elements applied by this component, normalising text nodes after. */
+function removeAllMarks(article: HTMLElement): void {
+  const marks = Array.from(article.querySelectorAll<HTMLElement>('mark[data-thread-id]'))
+  for (const mark of marks) {
+    const parent = mark.parentNode
+    if (!parent) continue
+    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+    parent.removeChild(mark)
+  }
+  // Merge text nodes that were split during previous wrapping operations
+  article.normalize()
 }
 
 export default function Viewer({ fileId }: Props) {
@@ -123,11 +233,18 @@ export default function Viewer({ fileId }: Props) {
 
     const entries = threadsRef.current
       .map((thread) => {
-        const block = article.querySelector(
-          `[data-line-start="${thread.lineRangeStart}"]`
+        // Prefer the <mark> anchor (precise) over the block fallback
+        const mark = article.querySelector(
+          `mark[data-thread-id="${thread.threadId}"]`
         ) as HTMLElement | null
-        const idealTop = block
-          ? block.getBoundingClientRect().top + window.scrollY
+        const block = mark
+          ? null
+          : (article.querySelector(
+              `[data-line-start="${thread.lineRangeStart}"]`
+            ) as HTMLElement | null)
+        const anchor = mark ?? block
+        const idealTop = anchor
+          ? anchor.getBoundingClientRect().top + window.scrollY
           : 0
         const cardEl = cardEls.current.get(thread.threadId)
         const height = cardEl?.offsetHeight ?? 80
@@ -147,8 +264,23 @@ export default function Viewer({ fileId }: Props) {
     setCardPositions(positions)
   }, []) // stable: reads from refs only
 
-  // Recompute after threads load or content renders
+  // Apply marks and recompute positions after threads load or content renders
   useLayoutEffect(() => {
+    if (state.status !== 'ready') return
+    const article = articleRef.current
+    if (!article) return
+
+    // Remove stale marks first, then re-anchor every thread
+    removeAllMarks(article)
+    for (const thread of threadsRef.current) {
+      const block = article.querySelector(
+        `[data-line-start="${thread.lineRangeStart}"]`
+      ) as HTMLElement | null
+      if (!block) continue
+      const range = findTextRange(block, thread.selectedText, thread.prefixContext, thread.suffixContext)
+      if (range) wrapRangeWithMark(range, thread.threadId)
+    }
+
     computePositions()
   }, [threads, state.status, computePositions])
 

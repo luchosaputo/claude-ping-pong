@@ -46,6 +46,8 @@ app.post('/api/threads', async (c) => {
 interface RawThreadRow {
   id: string
   selected_text: string
+  prefix_context: string | null
+  suffix_context: string | null
   line_range_start: number
   line_range_end: number
   thread_created_at: number
@@ -61,7 +63,8 @@ app.get('/api/files/:fileId/threads', (c) => {
   if (!file) return c.json({ error: 'File not found' }, 404)
 
   const rows = db.prepare<[string], RawThreadRow>(`
-    SELECT t.id, t.selected_text, t.line_range_start, t.line_range_end, t.created_at AS thread_created_at,
+    SELECT t.id, t.selected_text, t.prefix_context, t.suffix_context,
+           t.line_range_start, t.line_range_end, t.created_at AS thread_created_at,
            m.id AS message_id, m.author, m.body, m.created_at AS message_created_at
     FROM threads t
     JOIN messages m ON m.thread_id = t.id
@@ -72,6 +75,8 @@ app.get('/api/files/:fileId/threads', (c) => {
   const map = new Map<string, {
     threadId: string
     selectedText: string
+    prefixContext: string | null
+    suffixContext: string | null
     lineRangeStart: number
     lineRangeEnd: number
     createdAt: number
@@ -83,6 +88,8 @@ app.get('/api/files/:fileId/threads', (c) => {
       map.set(row.id, {
         threadId: row.id,
         selectedText: row.selected_text,
+        prefixContext: row.prefix_context,
+        suffixContext: row.suffix_context,
         lineRangeStart: row.line_range_start,
         lineRangeEnd: row.line_range_end,
         createdAt: row.thread_created_at,
