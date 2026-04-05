@@ -75,6 +75,34 @@ describe('GET /api/events/:fileId', () => {
 
     await reader!.cancel()
   })
+
+  it('broadcasts notify events to active SSE listeners', async () => {
+    getMock.mockReturnValue({ id: 'file-123' })
+
+    const sseRes = await app.request('/api/events/file-123')
+    const reader = sseRes.body?.getReader()
+    expect(reader).toBeTruthy()
+
+    const firstChunk = await reader!.read()
+    expect(new TextDecoder().decode(firstChunk.value)).toContain('event: ping')
+
+    const notifyRes = await app.request('/api/events/file-123/notify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event: 'thread:updated', threadId: 'thread-1', type: 'reply' }),
+    })
+
+    expect(notifyRes.status).toBe(200)
+
+    const secondChunk = await reader!.read()
+    const payload = new TextDecoder().decode(secondChunk.value)
+
+    expect(payload).toContain('event: thread:updated')
+    expect(payload).toContain('"threadId":"thread-1"')
+    expect(payload).toContain('"type":"reply"')
+
+    await reader!.cancel()
+  })
 })
 
 describe('POST /api/threads/:threadId/messages', () => {

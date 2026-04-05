@@ -389,7 +389,7 @@ Verificacion:
 
 ### Etapa 26: Notificar cambios de hilos al navegador
 
-[ ] Cuando `reply` o `resolve` se ejecutan via CLI (escriben en SQLite directamente), el servidor necesita saber. Opciones: el CLI hace un POST al servidor ademas de escribir en SQLite, o el servidor hace polling interno a la DB cada pocos segundos.
+[X] Cuando `reply` o `resolve` se ejecutan via CLI (escriben en SQLite directamente), el servidor necesita saber. Opciones: el CLI hace un POST al servidor ademas de escribir en SQLite, o el servidor hace polling interno a la DB cada pocos segundos.
 
 Recomendacion: el CLI hace `POST /api/events/:fileId/notify` con el tipo de evento. El servidor emite el SSE correspondiente a los viewers conectados.
 

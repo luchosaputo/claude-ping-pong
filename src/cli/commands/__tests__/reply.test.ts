@@ -1,13 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { runCommand } from 'citty'
 
-const getMock = vi.fn()
-const runMock = vi.fn()
+const { getMock, runMock, notifyThreadUpdatedMock } = vi.hoisted(() => ({
+  getMock: vi.fn(),
+  runMock: vi.fn(),
+  notifyThreadUpdatedMock: vi.fn(),
+}))
 
 vi.mock('../../../db.js', () => ({
   db: {
     prepare: vi.fn().mockImplementation((sql: string) => {
-      if (sql.includes('SELECT id, status FROM threads')) {
+      if (sql.includes('SELECT id, status, file_id FROM threads')) {
         return { get: getMock }
       }
       if (sql.includes("INSERT INTO messages")) {
@@ -20,6 +23,10 @@ vi.mock('../../../db.js', () => ({
 
 vi.mock('nanoid', () => ({
   nanoid: vi.fn().mockReturnValue('msg-agent'),
+}))
+
+vi.mock('../../notify.js', () => ({
+  notifyThreadUpdated: notifyThreadUpdatedMock,
 }))
 
 import replyCmd from '../reply.js'
@@ -56,7 +63,7 @@ describe('reply command', () => {
   })
 
   it('inserts an agent message for open threads', async () => {
-    getMock.mockReturnValue({ id: 'thread-1', status: 'open' })
+    getMock.mockReturnValue({ id: 'thread-1', status: 'open', file_id: 'file-1' })
     const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
 
     await runCommand(replyCmd, { rawArgs: ['thread-1', 'hello world'] })
@@ -65,6 +72,7 @@ describe('reply command', () => {
     expect(runMock.mock.calls[0][0]).toBe('msg-agent')
     expect(runMock.mock.calls[0][1]).toBe('thread-1')
     expect(runMock.mock.calls[0][2]).toBe('hello world')
+    expect(notifyThreadUpdatedMock).toHaveBeenCalledWith('file-1', 'thread-1', 'reply')
 
     expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
       threadId: 'thread-1',

@@ -45,6 +45,13 @@ interface Thread {
   createdAt: number
 }
 
+interface ThreadUpdatedEvent {
+  fileId: string
+  threadId: string
+  type: 'reply' | 'resolve'
+  timestamp: number
+}
+
 const CARD_GAP = 8
 
 function findBlockAncestor(node: Node, root: Element): Element | null {
@@ -192,6 +199,7 @@ export default function Viewer({ fileId }: Props) {
   const [threads, setThreads] = useState<Thread[]>([])
   const [cardPositions, setCardPositions] = useState<Map<string, number>>(new Map())
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
+  const [unreadThreadIds, setUnreadThreadIds] = useState<Set<string>>(new Set())
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)
@@ -213,6 +221,8 @@ export default function Viewer({ fileId }: Props) {
   // Expose latest threads to the stable scroll handler without re-registering
   const threadsRef = useRef<Thread[]>(threads)
   threadsRef.current = threads
+  const activeThreadIdRef = useRef<string | null>(activeThreadId)
+  activeThreadIdRef.current = activeThreadId
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
@@ -229,7 +239,13 @@ export default function Viewer({ fileId }: Props) {
   function loadThreads() {
     fetch(`/api/files/${fileId}/threads`)
       .then((r) => (r.ok ? (r.json() as Promise<Thread[]>) : Promise.reject()))
-      .then(setThreads)
+      .then((nextThreads) => {
+        setThreads(nextThreads)
+        setUnreadThreadIds((prev) => {
+          const nextIds = new Set(nextThreads.map((thread) => thread.threadId))
+          return new Set(Array.from(prev).filter((threadId) => nextIds.has(threadId)))
+        })
+      })
       .catch(() => { })
   }
 
@@ -244,10 +260,24 @@ export default function Viewer({ fileId }: Props) {
       // Keep the SSE channel exercised now; later stages will react to server-side events here.
     }
 
+    function handleThreadUpdated(_event: MessageEvent<string>) {
+      try {
+        const payload = JSON.parse(_event.data) as ThreadUpdatedEvent
+        if (payload.type === 'reply' && activeThreadIdRef.current !== payload.threadId) {
+          setUnreadThreadIds((prev) => new Set(prev).add(payload.threadId))
+        }
+      } catch {
+        // Ignore malformed SSE payloads and still refresh from source of truth.
+      }
+      loadThreads()
+    }
+
     eventSource.addEventListener('ping', handlePing as EventListener)
+    eventSource.addEventListener('thread:updated', handleThreadUpdated as EventListener)
 
     return () => {
       eventSource.removeEventListener('ping', handlePing as EventListener)
+      eventSource.removeEventListener('thread:updated', handleThreadUpdated as EventListener)
       eventSource.close()
     }
   }, [fileId])
@@ -329,6 +359,16 @@ export default function Viewer({ fileId }: Props) {
 
   // ── Active thread interaction ─────────────────────────────────────────────
 
+  function activateThread(threadId: string): void {
+    setUnreadThreadIds((prev) => {
+      if (!prev.has(threadId)) return prev
+      const next = new Set(prev)
+      next.delete(threadId)
+      return next
+    })
+    setActiveThreadId(threadId)
+  }
+
   // Delegated click on <mark> elements (marks are created imperatively, so per-element listeners would leak)
   useEffect(() => {
     const article = articleRef.current
@@ -339,7 +379,16 @@ export default function Viewer({ fileId }: Props) {
       if (!mark) return
       e.stopPropagation()
       const threadId = mark.dataset.threadId!
-      setActiveThreadId((prev) => (prev === threadId ? null : threadId))
+      setActiveThreadId((prev) => {
+        if (prev === threadId) return null
+        setUnreadThreadIds((current) => {
+          if (!current.has(threadId)) return current
+          const next = new Set(current)
+          next.delete(threadId)
+          return next
+        })
+        return threadId
+      })
     }
 
     article.addEventListener('click', handleMarkClick)
@@ -675,10 +724,11 @@ export default function Viewer({ fileId }: Props) {
       {threads.map((thread) => {
         const top = cardPositions.get(thread.threadId) ?? 0
         const isActive = thread.threadId === activeThreadId
+        const hasUnread = unreadThreadIds.has(thread.threadId)
 
         function handleCardClick(e: React.MouseEvent) {
           e.stopPropagation()
-          setActiveThreadId(thread.threadId)
+          activateThread(thread.threadId)
           if (!isActive) {
             const mark = articleRef.current?.querySelector<HTMLElement>(
               `mark[data-thread-id="${thread.threadId}"]`
@@ -712,6 +762,12 @@ export default function Viewer({ fileId }: Props) {
                   ? thread.selectedText.slice(0, 80) + '…'
                   : thread.selectedText}"
               </div>
+              {hasUnread && !isActive && (
+                <div style={styles.newBadge}>
+                  <span style={styles.newDot} />
+                  New
+                </div>
+              )}
               {isActive && !isEditing && (
                 <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
                   <button
@@ -1279,6 +1335,28 @@ const styles = {
     flexShrink: 0,
     gap: '2px',
     marginTop: '1px',
+  },
+  newBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '6px',
+    flexShrink: 0,
+    marginTop: '1px',
+    padding: '2px 8px',
+    borderRadius: '999px',
+    background: 'rgba(34, 102, 221, 0.1)',
+    color: 'var(--accent)',
+    fontSize: '11px',
+    fontWeight: '700' as const,
+    letterSpacing: '0.02em',
+    textTransform: 'uppercase' as const,
+  },
+  newDot: {
+    width: '7px',
+    height: '7px',
+    borderRadius: '50%',
+    background: 'var(--accent)',
+    boxShadow: '0 0 0 3px rgba(34, 102, 221, 0.14)',
   },
   iconBtn: {
     background: 'none',

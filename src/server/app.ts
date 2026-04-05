@@ -101,6 +101,27 @@ app.get('/api/events/:fileId', (c) => {
   })
 })
 
+app.post('/api/events/:fileId/notify', async (c) => {
+  const { fileId } = c.req.param()
+  const file = db.prepare<[string], { id: string }>('SELECT id FROM files WHERE id = ?').get(fileId)
+  if (!file) return c.json({ error: 'File not found' }, 404)
+
+  let body: Record<string, unknown>
+  try {
+    body = await c.req.json()
+  } catch {
+    return c.json({ error: 'Invalid JSON body' }, 400)
+  }
+
+  const { event, threadId, type } = body
+  if (event !== 'thread:updated') return c.json({ error: 'event must be thread:updated' }, 400)
+  if (typeof threadId !== 'string' || !threadId) return c.json({ error: 'threadId is required' }, 400)
+  if (type !== 'reply' && type !== 'resolve') return c.json({ error: 'type must be reply or resolve' }, 400)
+
+  emitFileEvent(fileId, event, { fileId, threadId, type, timestamp: Date.now() })
+  return c.json({ ok: true })
+})
+
 app.post('/api/threads', async (c) => {
   let body: Record<string, unknown>
   try {

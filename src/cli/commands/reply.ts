@@ -1,6 +1,7 @@
 import { defineCommand } from 'citty'
 import { nanoid } from 'nanoid'
 import { db } from '../../db.js'
+import { notifyThreadUpdated } from '../notify.js'
 
 export default defineCommand({
   meta: { description: 'Insert an agent reply into an open thread' },
@@ -8,7 +9,7 @@ export default defineCommand({
     threadId: { type: 'positional', description: 'Thread ID', required: true },
     body: { type: 'positional', description: 'Reply text', required: true },
   },
-  run({ args }) {
+  async run({ args }) {
     const threadId = args.threadId
     const body = args.body.trim()
 
@@ -18,7 +19,7 @@ export default defineCommand({
     }
 
     const thread = db
-      .prepare<[string], { id: string; status: string }>('SELECT id, status FROM threads WHERE id = ?')
+      .prepare<[string], { id: string; status: string; file_id: string }>('SELECT id, status, file_id FROM threads WHERE id = ?')
       .get(threadId)
 
     if (!thread) {
@@ -35,6 +36,8 @@ export default defineCommand({
     db.prepare(
       "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, 'agent', ?, ?)",
     ).run(messageId, threadId, body, Date.now())
+
+    await notifyThreadUpdated(thread.file_id, threadId, 'reply')
 
     console.log(JSON.stringify({ threadId, messageId }))
   },
