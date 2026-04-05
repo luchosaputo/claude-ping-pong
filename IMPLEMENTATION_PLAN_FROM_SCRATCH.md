@@ -201,7 +201,7 @@ Verificacion:
 
 ### Etapa 10: Mostrar boton de "Agregar comentario"
 
-[ ] Cuando hay seleccion valida de bloque unico, mostrar un boton/affordance visual cerca de la seleccion.
+[X] Cuando hay seleccion valida de bloque unico, mostrar un boton/affordance visual cerca de la seleccion.
 
 Verificacion:
 - Seleccionar texto valido → boton aparece.
@@ -210,7 +210,7 @@ Verificacion:
 
 ### Etapa 11: Popup para capturar el comentario
 
-[ ] Popup con textarea y acciones de guardar/cancelar. Al guardar, extraer:
+[X] Popup con textarea y acciones de guardar/cancelar. Al guardar, extraer:
 - `selectedText`: texto seleccionado
 - `prefixContext`: ~50 chars antes de la seleccion dentro del bloque
 - `suffixContext`: ~50 chars despues de la seleccion dentro del bloque

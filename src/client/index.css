@@ -3,13 +3,25 @@
   --bg: #ffffff;
   --text: #1a1a1a;
   --muted: #666666;
+  --card-bg: #ffffff;
+  --card-border: #e0e0e0;
+  --card-shadow: rgba(0, 0, 0, 0.15);
+  --accent: #1a73e8;
+  --accent-muted: rgba(26, 115, 232, 0.12);
+  --quote-border: #fbbc04;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #141414;
     --text: #e8e8e8;
-    --muted: #888888;
+    --muted: #9aa0a6;
+    --card-bg: #2a2a2a;
+    --card-border: #3d3d3d;
+    --card-shadow: rgba(0, 0, 0, 0.45);
+    --accent: #8ab4f8;
+    --accent-muted: rgba(138, 180, 248, 0.12);
+    --quote-border: #f9ab00;
   }
 }
 
