@@ -92,10 +92,10 @@ describe('POST /api/threads/:threadId/messages', () => {
     await replyRequest('t1', { body: 'reply text' })
 
     const insertCall = runMock.mock.calls[0]
-    // run(messageId, threadId, body, created_at) — author is hardcoded in SQL
     expect(insertCall[0]).toBe('msg-new')
     expect(insertCall[1]).toBe('t1')
-    expect(insertCall[2]).toBe('reply text')
+    expect(insertCall[2]).toBe('user')
+    expect(insertCall[3]).toBe('reply text')
   })
 })
 

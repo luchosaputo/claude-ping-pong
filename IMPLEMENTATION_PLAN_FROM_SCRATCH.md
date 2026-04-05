@@ -310,7 +310,7 @@ Verificacion:
 
 ### Etapa 20: Diferenciar autor en los mensajes
 
-[ ] Los mensajes con `author: 'agent'` se muestran con estilo visual distinto al de `author: 'user'`.
+[X] Los mensajes con `author: 'agent'` se muestran con estilo visual distinto al de `author: 'user'`.
 
 Verificacion:
 - Crear mensajes de ambos autores (via endpoint directo para simular agente).

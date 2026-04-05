@@ -17,11 +17,13 @@ app.post('/api/threads', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { fileId, selectedText, body: commentBody, prefixContext, suffixContext, lineRangeStart, lineRangeEnd } = body as Record<string, unknown>
+  const { fileId, selectedText, body: commentBody, prefixContext, suffixContext, lineRangeStart, lineRangeEnd, author } = body as Record<string, unknown>
 
   if (!fileId || typeof fileId !== 'string') return c.json({ error: 'fileId is required' }, 400)
   if (!selectedText || typeof selectedText !== 'string') return c.json({ error: 'selectedText is required' }, 400)
   if (!commentBody || typeof commentBody !== 'string') return c.json({ error: 'body is required' }, 400)
+
+  const msgAuthor = author === 'agent' ? 'agent' : 'user'
 
   const file = db.prepare<[string], { id: string }>('SELECT id FROM files WHERE id = ?').get(fileId)
   if (!file) return c.json({ error: 'File not found' }, 404)
@@ -37,7 +39,7 @@ app.post('/api/threads', async (c) => {
 
     db.prepare(
       'INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)'
-    ).run(messageId, threadId, 'user', commentBody, now)
+    ).run(messageId, threadId, msgAuthor, commentBody, now)
   })()
 
   return c.json({ threadId, messageId }, 201)
@@ -117,10 +119,12 @@ app.post('/api/threads/:threadId/messages', async (c) => {
     return c.json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { body: messageBody } = body as Record<string, unknown>
+  const { body: messageBody, author } = body as Record<string, unknown>
   if (!messageBody || typeof messageBody !== 'string' || !messageBody.trim()) {
     return c.json({ error: 'body is required' }, 400)
   }
+
+  const msgAuthor = author === 'agent' ? 'agent' : 'user'
 
   const thread = db.prepare<[string], { id: string; status: string }>('SELECT id, status FROM threads WHERE id = ?').get(threadId)
   if (!thread) return c.json({ error: 'Thread not found' }, 404)
@@ -130,8 +134,8 @@ app.post('/api/threads/:threadId/messages', async (c) => {
   const now = Date.now()
 
   db.prepare(
-    "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, 'user', ?, ?)"
-  ).run(messageId, threadId, messageBody.trim(), now)
+    "INSERT INTO messages (id, thread_id, author, body, created_at) VALUES (?, ?, ?, ?, ?)"
+  ).run(messageId, threadId, msgAuthor, messageBody.trim(), now)
 
   return c.json({ messageId }, 201)
 })

@@ -769,44 +769,58 @@ export default function Viewer({ fileId }: Props) {
                         </div>
                       ) : (
                         <>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{
-                              ...styles.authorLabel,
-                              ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
+                          <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                            <div style={{
+                              ...styles.avatar,
+                              ...(msg.author === 'agent' ? styles.avatarAgent : styles.avatarUser)
                             }}>
-                              {msg.author === 'agent' ? 'Agent' : 'You'}
-                            </span>
-                            {isActive && !isRootMessage && msg.author === 'user' && (
-                              <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  style={styles.iconBtn}
-                                  title="Edit reply"
-                                  onClick={() => handleStartMessageEdit(msg)}
-                                >
-                                  {/* pencil */}
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                                  </svg>
-                                </button>
-                                <button
-                                  style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
-                                  title="Delete reply"
-                                  onClick={() => handleMessageDelete(msg.id)}
-                                >
-                                  {/* trash */}
-                                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <polyline points="3 6 5 6 21 6"/>
-                                    <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
-                                    <path d="M10 11v6"/>
-                                    <path d="M14 11v6"/>
-                                    <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
-                                  </svg>
-                                </button>
+                              {msg.author === 'agent' ? (
+                                <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                                  <path d="M12 2l2.4 7.6L22 12l-7.6 2.4L12 22l-2.4-7.6L2 12l7.6-2.4z"/>
+                                </svg>
+                              ) : 'U'}
+                            </div>
+                            <div style={{ flex: 1, minWidth: 0, ...(msg.author === 'agent' ? styles.bubbleAgent : styles.bubbleUser) }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '2px' }}>
+                                <span style={{
+                                  ...styles.authorLabel,
+                                  ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
+                                }}>
+                                  {msg.author === 'agent' ? 'Agent' : 'You'}
+                                </span>
+                                {isActive && !isRootMessage && msg.author === 'user' && (
+                                  <div style={styles.quoteIcons} onClick={(e) => e.stopPropagation()}>
+                                    <button
+                                      style={styles.iconBtn}
+                                      title="Edit reply"
+                                      onClick={() => handleStartMessageEdit(msg)}
+                                    >
+                                      {/* pencil */}
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                                      </svg>
+                                    </button>
+                                    <button
+                                      style={{ ...styles.iconBtn, ...styles.iconBtnDanger }}
+                                      title="Delete reply"
+                                      onClick={() => handleMessageDelete(msg.id)}
+                                    >
+                                      {/* trash */}
+                                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                        <polyline points="3 6 5 6 21 6"/>
+                                        <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                                        <path d="M10 11v6"/>
+                                        <path d="M14 11v6"/>
+                                        <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+                                      </svg>
+                                    </button>
+                                  </div>
+                                )}
                               </div>
-                            )}
+                              <p style={styles.messageBody}>{msg.body}</p>
+                            </div>
                           </div>
-                          <p style={styles.messageBody}>{msg.body}</p>
                         </>
                       )}
                     </div>
@@ -1046,6 +1060,39 @@ const styles = {
     paddingTop: '8px',
     marginTop: '8px',
   },
+  avatar: {
+    width: '24px',
+    height: '24px',
+    borderRadius: '12px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    fontSize: '12px',
+    fontWeight: 'bold' as const,
+    flexShrink: 0,
+    marginTop: '2px',
+    userSelect: 'none' as const,
+  },
+  avatarUser: {
+    backgroundColor: 'var(--accent)',
+    color: '#fff',
+  },
+  avatarAgent: {
+    backgroundColor: 'var(--agent-accent)',
+    color: '#fff',
+  },
+  bubbleUser: {
+    backgroundColor: 'transparent',
+    padding: '0',
+    borderRadius: '0',
+  },
+  bubbleAgent: {
+    backgroundColor: 'var(--agent-bg)',
+    padding: '8px 10px',
+    borderRadius: '4px 8px 8px 4px',
+    borderLeft: '3px solid var(--agent-accent)',
+    marginTop: '-4px', // offset default padding
+  },
   authorLabel: {
     display: 'inline-block',
     fontSize: '11px',
@@ -1058,7 +1105,7 @@ const styles = {
     color: 'var(--accent)',
   },
   authorAgent: {
-    color: 'var(--muted)',
+    color: 'var(--agent-accent)',
   },
   messageBody: {
     margin: '0',
