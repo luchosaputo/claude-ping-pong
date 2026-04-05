@@ -409,7 +409,7 @@ Verificacion:
 
 ### Etapa 28: Refrescar la vista cuando cambia el documento
 
-[ ] El viewer escucha el evento `file:changed` via SSE. Al recibirlo, hace fetch del nuevo contenido renderizado y re-renderiza el documento re-anclando los comentarios existentes.
+[X] El viewer escucha el evento `file:changed` via SSE. Al recibirlo, hace fetch del nuevo contenido renderizado y re-renderiza el documento re-anclando los comentarios existentes.
 
 Verificacion:
 - Editar el archivo en otra terminal.

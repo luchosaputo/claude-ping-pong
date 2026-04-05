@@ -53,6 +53,11 @@ interface ThreadUpdatedEvent {
   timestamp: number
 }
 
+interface FileChangedEvent {
+  fileId: string
+  timestamp: number
+}
+
 function findBlockAncestor(node: Node, root: Element): Element | null {
   let el: Node | null = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
   while (el && el !== root) {
@@ -191,12 +196,58 @@ function removeAllMarks(article: HTMLElement): void {
   article.normalize()
 }
 
+function getCandidateBlocks(article: HTMLElement, thread: Thread): HTMLElement[] {
+  const allBlocks = Array.from(article.querySelectorAll<HTMLElement>('[data-line-start]'))
+  const candidates: HTMLElement[] = []
+  const seen = new Set<HTMLElement>()
+
+  function add(block: HTMLElement) {
+    if (seen.has(block)) return
+    seen.add(block)
+    candidates.push(block)
+  }
+
+  for (const block of allBlocks) {
+    const start = Number.parseInt(block.getAttribute('data-line-start') ?? '', 10)
+    if (start === thread.lineRangeStart) add(block)
+  }
+
+  for (const block of allBlocks) {
+    const start = Number.parseInt(block.getAttribute('data-line-start') ?? '', 10)
+    const end = Number.parseInt(block.getAttribute('data-line-end') ?? '', 10)
+    if (Number.isNaN(start) || Number.isNaN(end)) continue
+    if (start <= thread.lineRangeStart && end >= thread.lineRangeEnd) add(block)
+  }
+
+  for (const block of allBlocks) add(block)
+
+  return candidates
+}
+
+function findThreadAnchor(article: HTMLElement, thread: Thread): { block: HTMLElement; range: Range } | null {
+  for (const block of getCandidateBlocks(article, thread)) {
+    const range = findTextRange(block, thread.selectedText, thread.prefixContext, thread.suffixContext)
+    if (range) return { block, range }
+  }
+
+  return null
+}
+
+function setsEqual(left: Set<string>, right: Set<string>): boolean {
+  if (left.size !== right.size) return false
+  for (const value of left) {
+    if (!right.has(value)) return false
+  }
+  return true
+}
+
 export default function Viewer({ fileId }: Props) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [selection, setSelection] = useState<SelectionState>({ kind: 'none' })
   const [commentText, setCommentText] = useState('')
   const [threads, setThreads] = useState<Thread[]>([])
   const [cardPositions, setCardPositions] = useState<Map<string, number>>(new Map())
+  const [orphanedThreadIds, setOrphanedThreadIds] = useState<Set<string>>(new Set())
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [unreadThreadIds, setUnreadThreadIds] = useState<Set<string>>(new Set())
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
@@ -216,6 +267,8 @@ export default function Viewer({ fileId }: Props) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const composingCardRef = useRef<HTMLDivElement>(null)
   const cardEls = useRef(new Map<string, HTMLDivElement>())
+  const anchoredBlocksRef = useRef(new Map<string, HTMLElement>())
+  const contentRequestIdRef = useRef(0)
   const posRafRef = useRef<number | null>(null)
 
   // Expose latest threads to the stable scroll handler without re-registering
@@ -223,20 +276,35 @@ export default function Viewer({ fileId }: Props) {
   threadsRef.current = threads
   const selectionRef = useRef<SelectionState>(selection)
   selectionRef.current = selection
+  const orphanedThreadIdsRef = useRef<Set<string>>(orphanedThreadIds)
+  orphanedThreadIdsRef.current = orphanedThreadIds
   const activeThreadIdRef = useRef<string | null>(activeThreadId)
   activeThreadIdRef.current = activeThreadId
+  const contentVersion = state.status === 'ready' ? state.content : ''
 
   // ── Data loading ──────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    fetch(`/api/files/${fileId}/content`)
-      .then((res) => {
-        if (!res.ok) return res.json().then((b) => Promise.reject(b.error ?? res.statusText))
-        return res.text()
-      })
-      .then((content) => setState({ status: 'ready', content }))
-      .catch((err) => setState({ status: 'error', message: String(err) }))
+  const loadContent = useCallback(async () => {
+    const requestId = ++contentRequestIdRef.current
+    try {
+      const res = await fetch(`/api/files/${fileId}/content`)
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({ error: res.statusText })) as { error?: string }
+        throw new Error(body.error ?? res.statusText)
+      }
+      const content = await res.text()
+      if (contentRequestIdRef.current !== requestId) return
+      setState({ status: 'ready', content })
+    } catch (err) {
+      if (contentRequestIdRef.current !== requestId) return
+      setState({ status: 'error', message: String(err) })
+    }
   }, [fileId])
+
+  useEffect(() => {
+    setState({ status: 'loading' })
+    void loadContent()
+  }, [fileId, loadContent])
 
   function loadThreads() {
     fetch(`/api/files/${fileId}/threads`)
@@ -274,15 +342,29 @@ export default function Viewer({ fileId }: Props) {
       loadThreads()
     }
 
+    async function handleFileChanged(event: MessageEvent<string>) {
+      try {
+        const payload = JSON.parse(event.data) as FileChangedEvent
+        if (payload.fileId !== fileId) return
+      } catch {
+        // Reload anyway: the event type is enough to know content may be stale.
+      }
+      setSelection({ kind: 'none' })
+      setCommentText('')
+      await loadContent()
+    }
+
     eventSource.addEventListener('ping', handlePing as EventListener)
     eventSource.addEventListener('thread:updated', handleThreadUpdated as EventListener)
+    eventSource.addEventListener('file:changed', handleFileChanged as EventListener)
 
     return () => {
       eventSource.removeEventListener('ping', handlePing as EventListener)
       eventSource.removeEventListener('thread:updated', handleThreadUpdated as EventListener)
+      eventSource.removeEventListener('file:changed', handleFileChanged as EventListener)
       eventSource.close()
     }
-  }, [fileId])
+  }, [fileId, loadContent])
 
   // ── Position algorithm ────────────────────────────────────────────────────
 
@@ -296,15 +378,11 @@ export default function Viewer({ fileId }: Props) {
         const mark = article.querySelector(
           `mark[data-thread-id="${thread.threadId}"]`
         ) as HTMLElement | null
-        const block = mark
-          ? null
-          : (article.querySelector(
-            `[data-line-start="${thread.lineRangeStart}"]`
-          ) as HTMLElement | null)
-        const anchor = mark ?? block
+        const anchor = mark ?? anchoredBlocksRef.current.get(thread.threadId) ?? null
+        const isOrphaned = orphanedThreadIdsRef.current.has(thread.threadId)
         const idealTop = anchor
           ? anchor.getBoundingClientRect().top + window.scrollY
-          : 0
+          : (isOrphaned ? window.scrollY + 24 : 0)
         const cardEl = cardEls.current.get(thread.threadId)
         const height = cardEl?.offsetHeight ?? 80
         return { threadId: thread.threadId, idealTop, height }
@@ -328,17 +406,22 @@ export default function Viewer({ fileId }: Props) {
 
     // Remove stale marks first, then re-anchor every thread
     removeAllMarks(article)
+    anchoredBlocksRef.current.clear()
+    const nextOrphanedThreadIds = new Set<string>()
     for (const thread of threadsRef.current) {
-      const block = article.querySelector(
-        `[data-line-start="${thread.lineRangeStart}"]`
-      ) as HTMLElement | null
-      if (!block) continue
-      const range = findTextRange(block, thread.selectedText, thread.prefixContext, thread.suffixContext)
-      if (range) wrapRangeWithMark(range, thread.threadId)
+      const anchor = findThreadAnchor(article, thread)
+      if (!anchor) {
+        nextOrphanedThreadIds.add(thread.threadId)
+        continue
+      }
+      anchoredBlocksRef.current.set(thread.threadId, anchor.block)
+      wrapRangeWithMark(anchor.range, thread.threadId)
     }
+    orphanedThreadIdsRef.current = nextOrphanedThreadIds
+    setOrphanedThreadIds((prev) => (setsEqual(prev, nextOrphanedThreadIds) ? prev : nextOrphanedThreadIds))
 
     computePositions()
-  }, [threads, state.status, computePositions])
+  }, [threads, state.status, contentVersion, computePositions])
 
   // RAF-debounced scroll listener
   useEffect(() => {
@@ -415,7 +498,7 @@ export default function Viewer({ fileId }: Props) {
         .querySelector<HTMLElement>(`mark[data-thread-id="${activeThreadId}"]`)
         ?.classList.add('mark-active')
     }
-  }, [activeThreadId, threads])
+  }, [activeThreadId, threads, contentVersion])
 
   // Recompute card positions when active card expands/collapses (height changes)
   useLayoutEffect(() => {
@@ -728,6 +811,7 @@ export default function Viewer({ fileId }: Props) {
         const top = cardPositions.get(thread.threadId) ?? 0
         const isActive = thread.threadId === activeThreadId
         const hasUnread = unreadThreadIds.has(thread.threadId)
+        const isOrphaned = orphanedThreadIds.has(thread.threadId)
 
         function handleCardClick(e: React.MouseEvent) {
           e.stopPropagation()
@@ -753,6 +837,7 @@ export default function Viewer({ fileId }: Props) {
             onClick={handleCardClick}
             style={{
               ...styles.threadCard,
+              ...(isOrphaned ? styles.threadCardOrphaned : {}),
               ...(isActive ? styles.threadCardActive : {}),
               top,
               left: asideOffsetLeft,
@@ -769,6 +854,11 @@ export default function Viewer({ fileId }: Props) {
                 <div style={styles.newBadge}>
                   <span style={styles.newDot} />
                   New
+                </div>
+              )}
+              {isOrphaned && (
+                <div style={styles.orphanBadge}>
+                  Orphaned
                 </div>
               )}
               {isActive && !isEditing && (
@@ -815,6 +905,11 @@ export default function Viewer({ fileId }: Props) {
               )}
             </div>
             <div style={styles.messageList}>
+              {isOrphaned && (
+                <div style={styles.orphanHint}>
+                  This quoted fragment is no longer present in the current document.
+                </div>
+              )}
               {thread.messages
                 .filter((msg, i) => {
                   if (isEditing && i === 0 && msg.author === 'user') return false
@@ -1146,6 +1241,10 @@ const styles = {
     transition: 'top 0.15s ease',
     cursor: 'pointer',
   },
+  threadCardOrphaned: {
+    borderStyle: 'dashed' as const,
+    opacity: '0.92',
+  },
   threadCardActive: {
     zIndex: 60,
     cursor: 'default',
@@ -1274,6 +1373,27 @@ const styles = {
     borderLeft: '3px solid var(--quote-border)',
     paddingLeft: '8px',
     lineHeight: '1.5',
+  },
+  orphanBadge: {
+    flexShrink: 0,
+    marginLeft: '8px',
+    padding: '2px 6px',
+    borderRadius: '999px',
+    background: 'var(--agent-bg)',
+    color: 'var(--agent-accent)',
+    fontSize: '10px',
+    fontWeight: '700' as const,
+    letterSpacing: '0.03em',
+    textTransform: 'uppercase' as const,
+  },
+  orphanHint: {
+    marginBottom: '8px',
+    padding: '8px 10px',
+    borderRadius: '6px',
+    background: 'rgba(179, 110, 0, 0.08)',
+    color: '#8a5a00',
+    fontSize: '12px',
+    lineHeight: '1.45',
   },
   inputRow: {
     marginBottom: '8px',
