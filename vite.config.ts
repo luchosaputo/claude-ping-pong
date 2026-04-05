@@ -10,8 +10,8 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': 'http://localhost:3737',
-      '/health': 'http://localhost:3737',
+      '/api': 'http://localhost:5174',
+      '/health': 'http://localhost:5174',
     },
   },
 })

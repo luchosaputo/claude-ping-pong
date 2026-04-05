@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.node.json && vite build",
-    "dev": "NODE_ENV=development tsx watch src/server/index.ts & vite; wait",
+    "dev": "NODE_ENV=development CLAUDE_REVIEW_PORT=5174 tsx watch src/server/index.ts & vite; wait",
     "start": "node dist/server/index.js",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.node.json"

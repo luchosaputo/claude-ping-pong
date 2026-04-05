@@ -881,6 +881,14 @@ export default function Viewer({ fileId }: Props) {
                   New
                 </div>
               )}
+              {!isActive && !hasUnread && thread.messages.length > 1 && (
+                <div style={styles.replyCountBadge}>
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}>
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                  {thread.messages.length - 1}
+                </div>
+              )}
               {isOrphaned && (
                 <div style={styles.orphanBadge}>
                   Orphaned
@@ -1506,6 +1514,19 @@ const styles = {
     borderRadius: '50%',
     background: 'var(--accent)',
     boxShadow: '0 0 0 3px rgba(34, 102, 221, 0.14)',
+  },
+  replyCountBadge: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: '4px',
+    flexShrink: 0,
+    marginTop: '1px',
+    padding: '2px 7px',
+    borderRadius: '999px',
+    background: 'rgba(0,0,0,0.05)',
+    color: 'var(--muted)',
+    fontSize: '11px',
+    fontWeight: '600' as const,
   },
   iconBtn: {
     background: 'none',
