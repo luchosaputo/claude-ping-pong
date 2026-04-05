@@ -13,7 +13,7 @@ type State =
 
 type SelectionState =
   | { kind: 'none' }
-  | { kind: 'valid'; block: Element }
+  | { kind: 'valid'; block: Element; buttonX: number; buttonY: number }
   | { kind: 'cross-block'; tooltipX: number; tooltipY: number }
 
 function findBlockAncestor(node: Node, root: Element): Element | null {
@@ -61,7 +61,13 @@ export default function Viewer({ fileId }: Props) {
       }
 
       if (anchorBlock === focusBlock) {
-        setSelection({ kind: 'valid', block: anchorBlock })
+        const rect = range.getBoundingClientRect()
+        setSelection({
+          kind: 'valid',
+          block: anchorBlock,
+          buttonX: rect.right,
+          buttonY: rect.top + window.scrollY - 4,
+        })
       } else {
         const rect = range.getBoundingClientRect()
         setSelection({
@@ -98,6 +104,21 @@ export default function Viewer({ fileId }: Props) {
         </ReactMarkdown>
       </article>
       <aside style={styles.sidebar} />
+      {selection.kind === 'valid' && (
+        <button
+          title="Agregar comentario"
+          style={{
+            ...styles.addCommentBtn,
+            left: selection.buttonX,
+            top: selection.buttonY,
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </svg>
+        </button>
+      )}
       {selection.kind === 'cross-block' && (
         <div
           style={{
@@ -138,6 +159,28 @@ const styles = {
     padding: '48px 24px',
     color: 'var(--muted)',
     fontFamily: 'sans-serif',
+  },
+  addCommentBtn: {
+    position: 'absolute' as const,
+    transform: 'translateY(-100%)',
+    marginLeft: '8px',
+    background: '#1a73e8',
+    color: '#fff',
+    fontSize: '12px',
+    fontFamily: 'sans-serif',
+    fontWeight: '600' as const,
+    padding: '5px 7px',
+    lineHeight: '0',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: '4px',
+    border: 'none',
+    cursor: 'pointer',
+    whiteSpace: 'nowrap' as const,
+    zIndex: 100,
+    boxShadow: '0 2px 6px rgba(0,0,0,0.25)',
+    userSelect: 'none' as const,
   },
   tooltip: {
     position: 'absolute' as const,
