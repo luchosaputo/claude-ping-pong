@@ -239,18 +239,20 @@ Verificacion:
 - Backend persiste el hilo.
 - Recargar la pagina → comentario sigue presente.
 
-### Etapa 13.1: Cargar comentarios del backend
+### Etapa 14: Tarjetas flotantes estilo Google Docs
 
-[ ] Endpoint `GET /api/threads?fileId=...` que devuelve todos los hilos para un archivo.
+[ ] Renderizar tarjetas de comentario posicionadas absolutamente a la derecha del documento. Implementar el algoritmo de dos pasadas:
+1. Calcular posicion ideal de cada tarjeta (alineada con su `<mark>` anchor via `getBoundingClientRect`)
+2. Pasada de colision: iterar top-to-bottom y desplazar hacia abajo las que se solapan
 
-Renderizar las tarjetas de comentarios en el panel lateral.
+Debounce del recalculo de posiciones via `requestAnimationFrame` en el evento `scroll`.
 
 Verificacion:
-- Llamar al endpoint con fileId valido → devuelve hilos.
-- Llamar con fileId invalido → 404 controlado.
-- Recargar la pagina → comentarios aparecen.
+- Crear multiples comentarios → tarjetas aparecen a la derecha alineadas con su fragmento.
+- Con comentarios cercanos → tarjetas no se solapan.
+- Scroll → posiciones se recalculan correctamente.
 
-### Etapa 14: Resaltar el texto comentado en el documento
+### Etapa 15: Resaltar el texto comentado en el documento
 
 [ ] Al cargar comentarios, re-anclar cada hilo al DOM:
 1. Buscar coincidencia exacta de `selectedText` dentro del rango `data-line-*`
@@ -264,19 +266,6 @@ Verificacion:
 - Recargar → resaltado reaparece.
 - Modificar el texto comentado levemente → fuzzy match re-ancla.
 - Borrar el texto comentado → comentario aparece como huerfano en el panel.
-
-### Etapa 15: Tarjetas flotantes estilo Google Docs
-
-[ ] Renderizar tarjetas de comentario posicionadas absolutamente a la derecha del documento. Implementar el algoritmo de dos pasadas:
-1. Calcular posicion ideal de cada tarjeta (alineada con su `<mark>` anchor via `getBoundingClientRect`)
-2. Pasada de colision: iterar top-to-bottom y desplazar hacia abajo las que se solapan
-
-Debounce del recalculo de posiciones via `requestAnimationFrame` en el evento `scroll`.
-
-Verificacion:
-- Crear multiples comentarios → tarjetas aparecen a la derecha alineadas con su fragmento.
-- Con comentarios cercanos → tarjetas no se solapan.
-- Scroll → posiciones se recalculan correctamente.
 
 ### Etapa 16: Interaccion activa entre highlight y tarjeta
 
