@@ -43,6 +43,63 @@ app.post('/api/threads', async (c) => {
   return c.json({ threadId, messageId }, 201)
 })
 
+interface RawThreadRow {
+  id: string
+  selected_text: string
+  line_range_start: number
+  line_range_end: number
+  thread_created_at: number
+  message_id: string
+  author: string
+  body: string
+  message_created_at: number
+}
+
+app.get('/api/files/:fileId/threads', (c) => {
+  const { fileId } = c.req.param()
+  const file = db.prepare<[string], { id: string }>('SELECT id FROM files WHERE id = ?').get(fileId)
+  if (!file) return c.json({ error: 'File not found' }, 404)
+
+  const rows = db.prepare<[string], RawThreadRow>(`
+    SELECT t.id, t.selected_text, t.line_range_start, t.line_range_end, t.created_at AS thread_created_at,
+           m.id AS message_id, m.author, m.body, m.created_at AS message_created_at
+    FROM threads t
+    JOIN messages m ON m.thread_id = t.id
+    WHERE t.file_id = ? AND t.status = 'open'
+    ORDER BY t.created_at ASC, m.created_at ASC
+  `).all(fileId)
+
+  const map = new Map<string, {
+    threadId: string
+    selectedText: string
+    lineRangeStart: number
+    lineRangeEnd: number
+    createdAt: number
+    messages: Array<{ id: string; author: string; body: string; createdAt: number }>
+  }>()
+
+  for (const row of rows) {
+    if (!map.has(row.id)) {
+      map.set(row.id, {
+        threadId: row.id,
+        selectedText: row.selected_text,
+        lineRangeStart: row.line_range_start,
+        lineRangeEnd: row.line_range_end,
+        createdAt: row.thread_created_at,
+        messages: [],
+      })
+    }
+    map.get(row.id)!.messages.push({
+      id: row.message_id,
+      author: row.author,
+      body: row.body,
+      createdAt: row.message_created_at,
+    })
+  }
+
+  return c.json([...map.values()])
+})
+
 app.get('/api/files/:fileId/content', (c) => {
   const { fileId } = c.req.param()
   const row = db.prepare<[string], { path: string }>('SELECT path FROM files WHERE id = ?').get(fileId)

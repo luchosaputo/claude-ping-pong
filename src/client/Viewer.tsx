@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { remarkLineData } from './markdown.js'
 
@@ -26,6 +26,24 @@ type SelectionState =
     saving?: boolean
     saveError?: string
   }
+
+interface Message {
+  id: string
+  author: 'user' | 'agent'
+  body: string
+  createdAt: number
+}
+
+interface Thread {
+  threadId: string
+  selectedText: string
+  lineRangeStart: number
+  lineRangeEnd: number
+  messages: Message[]
+  createdAt: number
+}
+
+const CARD_GAP = 8
 
 function findBlockAncestor(node: Node, root: Element): Element | null {
   let el: Node | null = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
@@ -61,9 +79,20 @@ export default function Viewer({ fileId }: Props) {
   const [state, setState] = useState<State>({ status: 'loading' })
   const [selection, setSelection] = useState<SelectionState>({ kind: 'none' })
   const [commentText, setCommentText] = useState('')
+  const [threads, setThreads] = useState<Thread[]>([])
+  const [cardPositions, setCardPositions] = useState<Map<string, number>>(new Map())
+
   const articleRef = useRef<HTMLElement>(null)
   const asideRef = useRef<HTMLElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const cardEls = useRef(new Map<string, HTMLDivElement>())
+  const posRafRef = useRef<number | null>(null)
+
+  // Expose latest threads to the stable scroll handler without re-registering
+  const threadsRef = useRef<Thread[]>(threads)
+  threadsRef.current = threads
+
+  // ── Data loading ──────────────────────────────────────────────────────────
 
   useEffect(() => {
     fetch(`/api/files/${fileId}/content`)
@@ -74,6 +103,72 @@ export default function Viewer({ fileId }: Props) {
       .then((content) => setState({ status: 'ready', content }))
       .catch((err) => setState({ status: 'error', message: String(err) }))
   }, [fileId])
+
+  function loadThreads() {
+    fetch(`/api/files/${fileId}/threads`)
+      .then((r) => (r.ok ? (r.json() as Promise<Thread[]>) : Promise.reject()))
+      .then(setThreads)
+      .catch(() => {})
+  }
+
+  useEffect(() => {
+    if (state.status === 'ready') loadThreads()
+  }, [state.status])
+
+  // ── Position algorithm ────────────────────────────────────────────────────
+
+  const computePositions = useCallback(() => {
+    const article = articleRef.current
+    if (!article) return
+
+    const entries = threadsRef.current
+      .map((thread) => {
+        const block = article.querySelector(
+          `[data-line-start="${thread.lineRangeStart}"]`
+        ) as HTMLElement | null
+        const idealTop = block
+          ? block.getBoundingClientRect().top + window.scrollY
+          : 0
+        const cardEl = cardEls.current.get(thread.threadId)
+        const height = cardEl?.offsetHeight ?? 80
+        return { threadId: thread.threadId, idealTop, height }
+      })
+      .sort((a, b) => a.idealTop - b.idealTop)
+
+    const positions = new Map<string, number>()
+    let nextAvailable = 0
+
+    for (const { threadId, idealTop, height } of entries) {
+      const top = Math.max(idealTop, nextAvailable)
+      positions.set(threadId, top)
+      nextAvailable = top + height + CARD_GAP
+    }
+
+    setCardPositions(positions)
+  }, []) // stable: reads from refs only
+
+  // Recompute after threads load or content renders
+  useLayoutEffect(() => {
+    computePositions()
+  }, [threads, state.status, computePositions])
+
+  // RAF-debounced scroll listener
+  useEffect(() => {
+    function onScroll() {
+      if (posRafRef.current !== null) cancelAnimationFrame(posRafRef.current)
+      posRafRef.current = requestAnimationFrame(() => {
+        computePositions()
+        posRafRef.current = null
+      })
+    }
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      if (posRafRef.current !== null) cancelAnimationFrame(posRafRef.current)
+    }
+  }, [computePositions])
+
+  // ── Selection handling ────────────────────────────────────────────────────
 
   useEffect(() => {
     const article = articleRef.current
@@ -139,6 +234,8 @@ export default function Viewer({ fileId }: Props) {
     }
   }, [selection.kind])
 
+  // ── Comment actions ───────────────────────────────────────────────────────
+
   function handleAddCommentClick() {
     if (selection.kind !== 'valid') return
     const sel = window.getSelection()
@@ -182,6 +279,7 @@ export default function Viewer({ fileId }: Props) {
       }
       setSelection({ kind: 'none' })
       setCommentText('')
+      loadThreads()
     } catch (err) {
       setSelection((prev) => prev.kind === 'composing' ? { ...prev, saving: false, saveError: 'Error de red al guardar.' } : prev)
     }
@@ -194,6 +292,8 @@ export default function Viewer({ fileId }: Props) {
       handleSave()
     }
   }
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   if (state.status === 'loading') return <div style={styles.message}>Loading…</div>
   if (state.status === 'error') return <div style={styles.message}>Error: {state.message}</div>
@@ -209,6 +309,51 @@ export default function Viewer({ fileId }: Props) {
       </article>
 
       <aside ref={asideRef} style={styles.sidebar} />
+
+      {/* Existing thread cards */}
+      {threads.map((thread) => {
+        const top = cardPositions.get(thread.threadId) ?? 0
+        return (
+          <div
+            key={thread.threadId}
+            ref={(el) => {
+              if (el) cardEls.current.set(thread.threadId, el)
+              else cardEls.current.delete(thread.threadId)
+            }}
+            style={{
+              ...styles.threadCard,
+              top,
+              left: asideOffsetLeft,
+              visibility: cardPositions.size === 0 ? 'hidden' : 'visible',
+            }}
+          >
+            <div style={styles.quotedText}>
+              "{thread.selectedText.length > 80
+                ? thread.selectedText.slice(0, 80) + '…'
+                : thread.selectedText}"
+            </div>
+            <div style={styles.messageList}>
+              {thread.messages.map((msg, i) => (
+                <div
+                  key={msg.id}
+                  style={{
+                    ...styles.message_,
+                    ...(i > 0 ? styles.messageSeparated : {}),
+                  }}
+                >
+                  <span style={{
+                    ...styles.authorLabel,
+                    ...(msg.author === 'agent' ? styles.authorAgent : styles.authorUser),
+                  }}>
+                    {msg.author === 'agent' ? 'Agent' : 'You'}
+                  </span>
+                  <p style={styles.messageBody}>{msg.body}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      })}
 
       {selection.kind === 'valid' && (
         <button
@@ -312,7 +457,7 @@ const styles = {
     position: 'relative' as const,
   },
   document: {
-    flex: '0 1 720px',
+    flex: '0 1 860px',
     minWidth: 0,
     fontFamily: 'Georgia, serif',
     fontSize: '16px',
@@ -320,12 +465,59 @@ const styles = {
     color: 'var(--text)',
   },
   sidebar: {
-    flex: '0 0 320px',
+    flex: '0 0 240px',
   },
   message: {
     padding: '48px 24px',
     color: 'var(--muted)',
     fontFamily: 'sans-serif',
+  },
+  threadCard: {
+    position: 'absolute' as const,
+    width: '260px',
+    background: 'var(--card-bg)',
+    border: '1px solid var(--card-border)',
+    borderRadius: '8px',
+    boxShadow: '0 2px 8px var(--card-shadow)',
+    padding: '12px',
+    zIndex: 50,
+    fontFamily: 'Roboto, Arial, sans-serif',
+    transition: 'top 0.15s ease',
+  },
+  messageList: {
+    display: 'flex',
+    flexDirection: 'column' as const,
+    gap: '0',
+  },
+  message_: {
+    paddingTop: '4px',
+  },
+  messageSeparated: {
+    borderTop: '1px solid var(--card-border)',
+    paddingTop: '8px',
+    marginTop: '8px',
+  },
+  authorLabel: {
+    display: 'inline-block',
+    fontSize: '11px',
+    fontWeight: '700' as const,
+    letterSpacing: '0.02em',
+    marginBottom: '2px',
+    textTransform: 'uppercase' as const,
+  },
+  authorUser: {
+    color: 'var(--accent)',
+  },
+  authorAgent: {
+    color: 'var(--muted)',
+  },
+  messageBody: {
+    margin: '0',
+    fontSize: '13px',
+    lineHeight: '1.5',
+    color: 'var(--text)',
+    whiteSpace: 'pre-wrap' as const,
+    wordBreak: 'break-word' as const,
   },
   addCommentBtn: {
     position: 'absolute' as const,
@@ -364,7 +556,7 @@ const styles = {
   },
   commentCard: {
     position: 'absolute' as const,
-    width: '300px',
+    width: '260px',
     background: 'var(--card-bg)',
     border: '1px solid var(--card-border)',
     borderRadius: '8px',

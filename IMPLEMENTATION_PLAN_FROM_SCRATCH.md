@@ -241,7 +241,7 @@ Verificacion:
 
 ### Etapa 14: Tarjetas flotantes estilo Google Docs
 
-[ ] Renderizar tarjetas de comentario posicionadas absolutamente a la derecha del documento. Implementar el algoritmo de dos pasadas:
+[X] Renderizar tarjetas de comentario posicionadas absolutamente a la derecha del documento. Implementar el algoritmo de dos pasadas:
 1. Calcular posicion ideal de cada tarjeta (alineada con su `<mark>` anchor via `getBoundingClientRect`)
 2. Pasada de colision: iterar top-to-bottom y desplazar hacia abajo las que se solapan
 
