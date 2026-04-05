@@ -155,9 +155,10 @@ export default function Viewer({ fileId }: Props) {
     setCommentText('')
   }
 
-  function handleSave() {
+  async function handleSave() {
     if (selection.kind !== 'composing') return
     const payload = {
+      fileId,
       selectedText: selection.selectedText,
       prefixContext: selection.prefixContext,
       suffixContext: selection.suffixContext,
@@ -165,9 +166,21 @@ export default function Viewer({ fileId }: Props) {
       lineRangeEnd: selection.lineRangeEnd,
       body: commentText,
     }
-    console.log('[ping-pong] comment payload:', payload)
     setSelection({ kind: 'none' })
     setCommentText('')
+    try {
+      const res = await fetch('/api/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error: string }
+        console.error('[ping-pong] failed to save comment:', err.error)
+      }
+    } catch (err) {
+      console.error('[ping-pong] network error saving comment:', err)
+    }
   }
 
   function handleTextareaKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
