@@ -360,7 +360,7 @@ Verificacion:
 
 ### Etapa 23: Implementar `claude-ping-pong reply`
 
-[ ] Lee directamente de SQLite. Crea un mensaje en `messages` con `author = 'agent'`.
+[X] Lee directamente de SQLite. Crea un mensaje en `messages` con `author = 'agent'`.
 
 Verificacion:
 - Responder un hilo via CLI.
