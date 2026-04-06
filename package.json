@@ -2,6 +2,30 @@
   "name": "claude-ping-pong",
   "version": "0.1.0",
   "description": "Local Markdown review tool with inline comments for Claude agents",
+  "author": "Luciano Saputo",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luchosaputo/claude-ping-pong.git"
+  },
+  "homepage": "https://github.com/luchosaputo/claude-ping-pong#readme",
+  "bugs": {
+    "url": "https://github.com/luchosaputo/claude-ping-pong/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "markdown",
+    "review",
+    "comments",
+    "ping-pong"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "bin": {
     "claude-ping-pong": "dist/cli/index.js"
@@ -12,6 +36,7 @@
     "scripts/postinstall.mjs"
   ],
   "scripts": {
+    "prepublishOnly": "npm run test && npm run build",
     "build": "tsc -p tsconfig.node.json && vite build",
     "dev": "NODE_ENV=development CLAUDE_REVIEW_PORT=5174 tsx watch src/server/index.ts & vite; wait",
     "start": "node dist/server/index.js",
@@ -31,11 +56,7 @@
     "chokidar": "^4.0.3",
     "citty": "^0.2.2",
     "hono": "^4.7.6",
-    "nanoid": "^5.1.5",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "react-markdown": "^10.1.0",
-    "unist-util-visit": "^5.1.0"
+    "nanoid": "^5.1.5"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
@@ -44,6 +65,10 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.3.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-markdown": "^10.1.0",
+    "unist-util-visit": "^5.1.0",
     "rehype-stringify": "^10.0.1",
     "remark": "^15.0.1",
     "remark-rehype": "^11.1.2",
