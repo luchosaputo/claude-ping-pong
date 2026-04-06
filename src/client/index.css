@@ -71,6 +71,26 @@
   --agent-bg: rgba(220, 163, 141, 0.1);
 }
 
+article table {
+  border-collapse: collapse;
+  width: 100%;
+  font-family: Roboto, Arial, sans-serif;
+  font-size: 0.85em;
+}
+
+article table th,
+article table td {
+  border: 1px solid var(--card-border);
+  padding: 10px 16px;
+  text-align: left;
+}
+
+article table th {
+  font-weight: 600;
+  color: var(--agent-accent);
+  background: var(--agent-bg);
+}
+
 mark[data-thread-id] {
   background-color: var(--highlight);
   color: inherit;

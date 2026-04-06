@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import { remarkLineData } from './markdown.js'
+import remarkGfm from 'remark-gfm'
 import { computeThreadCardPositions } from './threadPositions.js'
 
 type Theme = 'system' | 'light' | 'dark'
@@ -897,7 +898,7 @@ export default function Viewer({ fileId }: Props) {
       </button>
 
       <article ref={articleRef} style={styles.document}>
-        <ReactMarkdown remarkPlugins={[remarkLineData]}>
+        <ReactMarkdown remarkPlugins={[remarkGfm, remarkLineData]}>
           {state.content}
         </ReactMarkdown>
       </article>
