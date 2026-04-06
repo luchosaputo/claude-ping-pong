@@ -418,6 +418,7 @@ export default function Viewer({ fileId }: Props) {
       } catch {
         // Reload anyway: the event type is enough to know content may be stale.
       }
+      if (articleRef.current) removeAllMarks(articleRef.current)
       setSelection({ kind: 'none' })
       setCommentText('')
       await loadContent()
@@ -444,6 +445,7 @@ export default function Viewer({ fileId }: Props) {
         .then((nextContent) => {
           if (contentRequestIdRef.current !== requestId) return
           if (nextContent === latestContentRef.current) return
+          if (articleRef.current) removeAllMarks(articleRef.current)
           setSelection({ kind: 'none' })
           setCommentText('')
           setState({ status: 'ready', content: nextContent })

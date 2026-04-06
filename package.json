@@ -6,10 +6,16 @@
   "bin": {
     "claude-ping-pong": "dist/cli/index.js"
   },
+  "files": [
+    "dist",
+    "skills",
+    "scripts/postinstall.mjs"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.node.json && vite build",
     "dev": "NODE_ENV=development CLAUDE_REVIEW_PORT=5174 tsx watch src/server/index.ts & vite; wait",
     "start": "node dist/server/index.js",
+    "postinstall": "node scripts/postinstall.mjs",
     "test": "vitest run --config vitest.config.ts",
     "typecheck": "tsc --noEmit -p tsconfig.node.json"
   },
