@@ -1,11 +1,11 @@
-import { resolve } from 'path'
-import { existsSync } from 'fs'
+import { resolve, join } from 'path'
+import { existsSync, openSync } from 'fs'
 import { spawn } from 'child_process'
 import { fileURLToPath } from 'url'
 import { defineCommand } from 'citty'
 import { nanoid } from 'nanoid'
 import { db } from '../../db.js'
-import { PORT } from '../../config.js'
+import { PORT, DATA_DIR, ensureDataDir } from '../../config.js'
 
 async function checkHealth(): Promise<boolean> {
   try {
@@ -28,10 +28,13 @@ async function waitForServer(maxWaitMs = 10_000): Promise<void> {
 }
 
 function spawnServer(): void {
+  ensureDataDir()
+  const logPath = join(DATA_DIR, 'server.log')
+  const logFd = openSync(logPath, 'a')
   const serverPath = fileURLToPath(new URL('../../server/index.js', import.meta.url))
   const child = spawn(process.execPath, [serverPath], {
     detached: true,
-    stdio: 'ignore',
+    stdio: ['ignore', logFd, logFd],
     env: { ...process.env },
   })
   child.unref()
