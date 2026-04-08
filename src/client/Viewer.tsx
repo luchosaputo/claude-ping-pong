@@ -314,6 +314,7 @@ export default function Viewer({ fileId }: Props) {
   const [orphanedThreadIds, setOrphanedThreadIds] = useState<Set<string>>(new Set())
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [unreadThreadIds, setUnreadThreadIds] = useState<Set<string>>(new Set())
+  const [contentKey, setContentKey] = useState(0)
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)
@@ -364,6 +365,7 @@ export default function Viewer({ fileId }: Props) {
     try {
       const content = await fetchContent()
       if (contentRequestIdRef.current !== requestId) return
+      setContentKey((k) => k + 1)
       setState({ status: 'ready', content })
     } catch (err) {
       if (contentRequestIdRef.current !== requestId) return
@@ -419,7 +421,6 @@ export default function Viewer({ fileId }: Props) {
       } catch {
         // Reload anyway: the event type is enough to know content may be stale.
       }
-      if (articleRef.current) removeAllMarks(articleRef.current)
       setSelection({ kind: 'none' })
       setCommentText('')
       await loadContent()
@@ -446,9 +447,9 @@ export default function Viewer({ fileId }: Props) {
         .then((nextContent) => {
           if (contentRequestIdRef.current !== requestId) return
           if (nextContent === latestContentRef.current) return
-          if (articleRef.current) removeAllMarks(articleRef.current)
           setSelection({ kind: 'none' })
           setCommentText('')
+          setContentKey((k) => k + 1)
           setState({ status: 'ready', content: nextContent })
         })
         .catch(() => { })
@@ -898,7 +899,7 @@ export default function Viewer({ fileId }: Props) {
       </button>
 
       <article ref={articleRef} style={styles.document}>
-        <ReactMarkdown remarkPlugins={[remarkGfm, remarkLineData]}>
+        <ReactMarkdown key={contentKey} remarkPlugins={[remarkGfm, remarkLineData]}>
           {state.content}
         </ReactMarkdown>
       </article>
