@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
-import { remarkLineData } from './markdown.js'
+import { remarkLineData, rehypeMarks } from './markdown.js'
 import remarkGfm from 'remark-gfm'
 import { computeThreadCardPositions } from './threadPositions.js'
 
@@ -117,150 +117,6 @@ function extractSelectionData(sel: Selection, block: Element, cardY: number): Ex
   return { kind: 'composing', cardY, selectedText, prefixContext, suffixContext, lineRangeStart, lineRangeEnd }
 }
 
-// ── Text anchoring helpers ────────────────────────────────────────────────
-
-/**
- * Convert a character offset within a DOM subtree's textContent to a Range.
- * Walks text nodes accumulating lengths until the start and end positions are found.
- */
-function charOffsetToRange(root: Element, startOffset: number, length: number): Range | null {
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
-  let pos = 0
-  let startNode: Text | null = null
-  let startNodeOffset = 0
-  let endNode: Text | null = null
-  let endNodeOffset = 0
-
-  let node: Node | null
-  while ((node = walker.nextNode())) {
-    const text = node as Text
-    const len = text.length
-    const nodeEnd = pos + len
-
-    if (startNode === null && nodeEnd > startOffset) {
-      startNode = text
-      startNodeOffset = startOffset - pos
-    }
-    if (startNode !== null && nodeEnd >= startOffset + length) {
-      endNode = text
-      endNodeOffset = startOffset + length - pos
-      break
-    }
-    pos += len
-  }
-
-  if (!startNode || !endNode) return null
-  const range = document.createRange()
-  range.setStart(startNode, startNodeOffset)
-  range.setEnd(endNode, endNodeOffset)
-  return range
-}
-
-/**
- * Find the Range for selectedText inside a block element.
- * First tries exact match (using prefix+suffix for disambiguation).
- * Falls back to a simple indexOf match.
- * Returns null when the text can no longer be located (orphan).
- */
-function findTextRange(
-  block: Element,
-  selectedText: string,
-  prefixContext: string | null,
-  suffixContext: string | null,
-): Range | null {
-  const fullText = block.textContent ?? ''
-
-  // Try context-assisted disambiguation first
-  if (prefixContext !== null && suffixContext !== null) {
-    const needle = prefixContext + selectedText + suffixContext
-    const idx = fullText.indexOf(needle)
-    if (idx !== -1) {
-      return charOffsetToRange(block, idx + prefixContext.length, selectedText.length)
-    }
-  }
-
-  // Plain exact match (first occurrence)
-  const idx = fullText.indexOf(selectedText)
-  if (idx !== -1) {
-    return charOffsetToRange(block, idx, selectedText.length)
-  }
-
-  // Normalised whitespace fallback
-  const normalFull = fullText.replace(/\s+/g, ' ')
-  const normalSelected = selectedText.replace(/\s+/g, ' ').trim()
-  if (normalSelected.length > 0) {
-    const normalIdx = normalFull.indexOf(normalSelected)
-    if (normalIdx !== -1) {
-      return charOffsetToRange(block, normalIdx, normalSelected.length)
-    }
-  }
-
-  return null
-}
-
-/** Wrap the given Range in a <mark data-thread-id="…"> element. */
-function wrapRangeWithMark(range: Range, threadId: string): void {
-  const mark = document.createElement('mark')
-  mark.dataset.threadId = threadId
-  try {
-    range.surroundContents(mark)
-  } catch {
-    // Range partially overlaps element boundaries — extract then re-insert
-    const fragment = range.extractContents()
-    mark.appendChild(fragment)
-    range.insertNode(mark)
-  }
-}
-
-/** Remove all mark elements applied by this component, normalising text nodes after. */
-function removeAllMarks(article: HTMLElement): void {
-  const marks = Array.from(article.querySelectorAll<HTMLElement>('mark[data-thread-id]'))
-  for (const mark of marks) {
-    const parent = mark.parentNode
-    if (!parent) continue
-    while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
-    parent.removeChild(mark)
-  }
-  // Merge text nodes that were split during previous wrapping operations
-  article.normalize()
-}
-
-function getCandidateBlocks(article: HTMLElement, thread: Thread): HTMLElement[] {
-  const allBlocks = Array.from(article.querySelectorAll<HTMLElement>('[data-line-start]'))
-  const candidates: HTMLElement[] = []
-  const seen = new Set<HTMLElement>()
-
-  function add(block: HTMLElement) {
-    if (seen.has(block)) return
-    seen.add(block)
-    candidates.push(block)
-  }
-
-  for (const block of allBlocks) {
-    const start = Number.parseInt(block.getAttribute('data-line-start') ?? '', 10)
-    if (start === thread.lineRangeStart) add(block)
-  }
-
-  for (const block of allBlocks) {
-    const start = Number.parseInt(block.getAttribute('data-line-start') ?? '', 10)
-    const end = Number.parseInt(block.getAttribute('data-line-end') ?? '', 10)
-    if (Number.isNaN(start) || Number.isNaN(end)) continue
-    if (start <= thread.lineRangeStart && end >= thread.lineRangeEnd) add(block)
-  }
-
-  for (const block of allBlocks) add(block)
-
-  return candidates
-}
-
-function findThreadAnchor(article: HTMLElement, thread: Thread): { block: HTMLElement; range: Range } | null {
-  for (const block of getCandidateBlocks(article, thread)) {
-    const range = findTextRange(block, thread.selectedText, thread.prefixContext, thread.suffixContext)
-    if (range) return { block, range }
-  }
-
-  return null
-}
 
 function setsEqual(left: Set<string>, right: Set<string>): boolean {
   if (left.size !== right.size) return false
@@ -315,6 +171,8 @@ export default function Viewer({ fileId }: Props) {
   const [activeThreadId, setActiveThreadId] = useState<string | null>(null)
   const [unreadThreadIds, setUnreadThreadIds] = useState<Set<string>>(new Set())
   const [contentKey, setContentKey] = useState(0)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const rehypePlugins = useMemo(() => [[rehypeMarks, { threads }] as [typeof rehypeMarks, any]], [threads])
   const [editingThreadId, setEditingThreadId] = useState<string | null>(null)
   const [editText, setEditText] = useState('')
   const [editSaving, setEditSaving] = useState(false)
@@ -490,24 +348,22 @@ export default function Viewer({ fileId }: Props) {
     setCardPositions(positions)
   }, []) // stable: reads from refs only
 
-  // Apply marks and recompute positions after threads load or content renders
+  // Derive anchor blocks and orphaned status from marks placed by rehypeMarks, then compute positions
   useLayoutEffect(() => {
     if (state.status !== 'ready') return
     const article = articleRef.current
     if (!article) return
 
-    // Remove stale marks first, then re-anchor every thread
-    removeAllMarks(article)
     anchoredBlocksRef.current.clear()
     const nextOrphanedThreadIds = new Set<string>()
     for (const thread of threadsRef.current) {
-      const anchor = findThreadAnchor(article, thread)
-      if (!anchor) {
+      const mark = article.querySelector<HTMLElement>(`mark[data-thread-id="${thread.threadId}"]`)
+      if (!mark) {
         nextOrphanedThreadIds.add(thread.threadId)
         continue
       }
-      anchoredBlocksRef.current.set(thread.threadId, anchor.block)
-      wrapRangeWithMark(anchor.range, thread.threadId)
+      const block = mark.closest<HTMLElement>('[data-line-start]')
+      if (block) anchoredBlocksRef.current.set(thread.threadId, block)
     }
     orphanedThreadIdsRef.current = nextOrphanedThreadIds
     setOrphanedThreadIds((prev) => (setsEqual(prev, nextOrphanedThreadIds) ? prev : nextOrphanedThreadIds))
@@ -899,7 +755,7 @@ export default function Viewer({ fileId }: Props) {
       </button>
 
       <article ref={articleRef} style={styles.document}>
-        <ReactMarkdown key={contentKey} remarkPlugins={[remarkGfm, remarkLineData]}>
+        <ReactMarkdown key={contentKey} remarkPlugins={[remarkGfm, remarkLineData]} rehypePlugins={rehypePlugins}>
           {state.content}
         </ReactMarkdown>
       </article>
