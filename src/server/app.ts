@@ -2,10 +2,14 @@ import { serveStatic } from '@hono/node-server/serve-static'
 import chokidar, { type FSWatcher } from 'chokidar'
 import { Hono } from 'hono'
 import { readFileSync, existsSync } from 'fs'
-import { join } from 'path'
+import { join, dirname } from 'path'
+import { fileURLToPath } from 'url'
 import { nanoid } from 'nanoid'
 import { PORT, DATA_DIR } from '../config.js'
 import { db } from '../db.js'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
+const CLIENT_DIR = join(__dirname, '../client')
 
 export const app = new Hono()
 
@@ -438,10 +442,10 @@ app.get('/api/files/:fileId/content', (c) => {
 
 
 if (process.env.NODE_ENV !== 'development') {
-  app.use('/*', serveStatic({ root: './dist/client' }))
+  app.use('/*', serveStatic({ root: CLIENT_DIR }))
 
   app.get('*', (c) => {
-    const html = readFileSync(join(process.cwd(), 'dist/client/index.html'), 'utf-8')
+    const html = readFileSync(join(CLIENT_DIR, 'index.html'), 'utf-8')
     return c.html(html)
   })
 }
