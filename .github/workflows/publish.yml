@@ -46,6 +46,7 @@ jobs:
             LICENSE
             skills/
             scripts/postinstall.mjs
+            README.md
           retention-days: 1
 
   publish:
